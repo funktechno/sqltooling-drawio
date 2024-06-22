@@ -30,11 +30,9 @@
         "@typescript-eslint/class-name-casing": "off"
     },
     "ignorePatterns": [
-        "src/TextHighlighter.js",
         "lib/*",
         "deps/*",
         "dist/*",
-        "src/mermaid/*",
         "archived"
     ],
     "overrides": [
