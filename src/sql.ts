@@ -81,16 +81,15 @@ Draw.loadPlugin(function(ui) {
      * @returns 
      */
     function getDbLabel(label: string, columnQuantifiers: ColumnQuantifiers): TableAttribute{
-        label = removeHtml(label);
+        let result = removeHtml(label);
         // fix duplicate spaces and different space chars
-        label = label
-            .replace(/\s+/g, " ");
-        const firstSpaceIndex = label[0] == columnQuantifiers.Start &&
-            label.indexOf(columnQuantifiers.End + " ") !== -1
-                ? label.indexOf(columnQuantifiers.End + " ")
-                : label.indexOf(" ");
-        const attributeType = label.substring(firstSpaceIndex + 1).trim();
-        const attributeName = RemoveNameQuantifiers(label.substring(0, firstSpaceIndex + 1));
+        result = result.toString().replace(/\s+/g, " ");
+        const firstSpaceIndex = result[0] == columnQuantifiers.Start &&
+            result.indexOf(columnQuantifiers.End + " ") !== -1
+            ? result.indexOf(columnQuantifiers.End + " ")
+            : result.indexOf(" ");
+        const attributeType = result.substring(firstSpaceIndex + 1).trim();
+        const attributeName = RemoveNameQuantifiers(result.substring(0, firstSpaceIndex + 1));
         const attribute = {
             attributeName,
             attributeType
