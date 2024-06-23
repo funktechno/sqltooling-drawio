@@ -11,12 +11,7 @@ import { ForeignKeyModel, PrimaryKeyModel, PropertyModel, TableModel } from "@fu
 Draw.loadPlugin(function(ui) {
     
     // export sql methods
-
-    /**
-     * Mermaid Models TO SQL parser
-     * src https://github.com/Software-Developers-IRL/Little-Mermaid-2-The-SQL/blob/main/src/generate-sql-ddl.ts
-     */
-    // DbParser
+    const pluginVersion = "<VERSION>";
 
     //Create Base div
     const divGenSQL = document.createElement("div");
@@ -28,7 +23,8 @@ Draw.loadPlugin(function(ui) {
     const sqlInputGenSQL = document.createElement("textarea");
     sqlInputGenSQL.style.height = "200px";
     sqlInputGenSQL.style.width = "100%";
-    sqlInputGenSQL.value = "-- click a database type button";
+    const sqlExportDefault = "-- click a database type button";
+    sqlInputGenSQL.value = sqlExportDefault;
     mxUtils.br(divGenSQL);
     divGenSQL.appendChild(sqlInputGenSQL);
     const theMenuExportAs = ui.menus.get("exportAs");
@@ -308,7 +304,7 @@ Draw.loadPlugin(function(ui) {
         const parser = new DbParser(type as string, db);
         // generate sql
         let sql = parser.getSQLDataDefinition();
-        sql = `/*\n\tGenerated in drawio\n\tDatabase: ${type}\n*/\n\n` + sql;
+        sql = `/*\n\tGenerated in drawio\n\tDatabase: ${type}\n\tPlugin: sql\n\tVersion: ${pluginVersion}\n*/\n\n` + sql;
         sql = sql.trim();
         // update sql value in text area
         sqlInputGenSQL.value = sql;
@@ -319,7 +315,7 @@ Draw.loadPlugin(function(ui) {
     mxUtils.br(divGenSQL);
 
     const resetBtnGenSQL = mxUtils.button(mxResources.get("reset"), function() {
-        sqlInputGenSQL.value = "";
+        sqlInputGenSQL.value = sqlExportDefault;
     });
 
     resetBtnGenSQL.style.marginTop = "8px";
@@ -395,10 +391,11 @@ Draw.loadPlugin(function(ui) {
     const sqlInputFromSQL = document.createElement("textarea");
     sqlInputFromSQL.style.height = "200px";
     sqlInputFromSQL.style.width = "100%";
-    const defaultReset = "/*\n\tDraw io default value\n*/\n\nCREATE TABLE Persons\n(\n    PersonID int NOT NULL,\n    LastName varchar(255),\n    " +
+    const defaultReset = "/*\n\tDrawio default value\n\tPlugin: sql\n\tVersion: ${pluginVersion}\n*/\n\nCREATE TABLE Persons\n(\n    PersonID int NOT NULL,\n    LastName varchar(255),\n    " +
     "FirstName varchar(255),\n    Address varchar(255),\n    City varchar(255),\n    Primary Key(PersonID)\n);\n\n" + 
     "CREATE TABLE Orders\n(\n    OrderID int NOT NULL PRIMARY KEY,\n    PersonID int NOT NULL,\n    FOREIGN KEY ([PersonID]) REFERENCES [Persons]([PersonID])" +
     "\n);";
+
     sqlInputFromSQL.value = defaultReset;
     mxUtils.br(divFromSQL);
     divFromSQL.appendChild(sqlInputFromSQL);
