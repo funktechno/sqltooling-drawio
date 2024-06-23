@@ -3,6 +3,10 @@ declare const Draw: {
     loadPlugin(handler: (ui: DrawioUI) => void): void;
 };
 
+interface Customwindow extends Window {
+    VsCodeApi: any | undefined;
+}
+
 declare const log: any;
 declare class mxCellHighlight {
     constructor(graph: DrawioGraph, color: string, arg: number);
