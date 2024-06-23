@@ -36,7 +36,8 @@
   },
   "homepage": "https://github.com/lastlink/sqltooling-drawio#readme",
   "dependencies": {
-    "@funktechno/little-mermaid-2-the-sql": "^0.1.1"
+    "@funktechno/little-mermaid-2-the-sql": "^0.1.1",
+    "@funktechno/sqlsimpleparser": "^0.1.0"
   },
   "devDependencies": {
     "jest": "^29.0.3",
