@@ -1,0 +1,62 @@
+{
+  "name": "sqltooling-drawio",
+  "version": "0.0.1",
+  "description": "plugins for sql tooling in drawio",
+  "main": "index.js",
+  "engines": {
+    "node": ">=16.x"
+  },
+  "scripts": {
+    "start": "node index.mjs",
+    "test": "jest -c ./jest.config.ts --forceExit --verbose -i --no-cache --detectOpenHandles",
+    "test:coverage": "jest --forceExit --coverage --verbose --detectOpenHandles",
+    "test:watch": "jest --watchAll --detectOpenHandles",
+    "lint": "tsc --noEmit && eslint \"{src,client}/**/*.{js,ts}\"",
+    "lint:fix": "tsc --noEmit && eslint \"{src,client}/**/*.{js,ts}\" --fix",
+    "create": "npm run build && npm run cli:test",
+    "build": "tsc && npm run build:types",
+    "build:types": "tsc -p tsconfig-types.json",
+    "build:help": "tsc --help",
+    "build:client": "npm run mkdir:dist && browserify src/sql.ts -p [ tsify --noImplicitAny ] > dist/sql.js && npm run updateVersion:dist",
+    "mkdir:dist": "node ./build/createDistFolder.js",
+    "updateVersion:dist": "node ./build/updateVersion.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/lastlink/sqltooling-drawio.git"
+  },
+  "keywords": [
+    "uml-diagram",
+    "drawio",
+    "sqltools"
+  ],
+  "author": "lastlink",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/lastlink/sqltooling-drawio/issues"
+  },
+  "homepage": "https://github.com/lastlink/sqltooling-drawio#readme",
+  "dependencies": {
+    "@funktechno/little-mermaid-2-the-sql": "^0.1.1",
+    "@funktechno/sqlsimpleparser": "^0.1.0",
+    "browserify": "^17.0.0",
+    "tsify": "^5.0.2"
+  },
+  "devDependencies": {
+    "@types/eslint": "^7.2.4",
+    "@types/jest": "^29.0.3",
+    "@typescript-eslint/eslint-plugin": "^2.24.0",
+    "@typescript-eslint/parser": "^2.24.0",
+    "eslint": "^6.8.0",
+    "jest": "^29.0.3",
+    "jest-junit": "^16.0.0",
+    "jest-serial-runner": "^1.1.0",
+    "ts-jest": "^29.0.1",
+    "ts-node": "^10.9.1",
+    "typescript": "^5.0.2"
+  },
+  "directories": {
+    "lib": "lib",
+    "test": "tests"
+  }
+}
