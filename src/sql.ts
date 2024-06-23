@@ -5,7 +5,8 @@ import { SqlSimpleParser } from "@funktechno/sqlsimpleparser";
 import { ForeignKeyModel, PrimaryKeyModel, PropertyModel, TableModel } from "@funktechno/sqlsimpleparser/lib/types";
 
 /**
- * Parse SQL CREATE TABLE. Simple initial version for community to improve.
+ * SQL Tools Plugin for importing diagrams from SQL DDL and exporting to SQL.
+ * Version: <VERSION>
  */
 Draw.loadPlugin(function(ui) {
     
@@ -633,7 +634,7 @@ Draw.loadPlugin(function(ui) {
 
     // finalize menu buttons
     const theMenu = ui.menus.get("insert");
-    if(theMenu && theMenu.enabled) {
+    if(theMenu) {
         const oldMenu = theMenu.funct;
         theMenu.funct = function(...args) {
             const [menu, parent] = args;
