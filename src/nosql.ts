@@ -49,12 +49,12 @@ Draw.loadPlugin(function(ui) {
      * return text quantifiers for dialect
      * @returns json
      */
-    function GetColumnQuantifiers(type: "mysql" | "sqlserver" | "sqlite" | "postgres" | undefined): ColumnQuantifiers {
+    function GetColumnQuantifiers(type: "ts" | "sqlserver" | "sqlite" | "postgres" | undefined): ColumnQuantifiers {
         const chars = {
             Start: "\"",
             End: "\"",
         };
-        if (type == "mysql") {
+        if (type == "ts") {
             chars.Start = "`";
             chars.End = "`";
         }
@@ -102,7 +102,7 @@ Draw.loadPlugin(function(ui) {
         return name.replace(/\[|\]|\(|\"|\'|\`/g, "").trim();
     }
 
-    function getMermaidDiagramDb(type: "mysql" | "sqlserver" | "sqlite" | "postgres" | undefined): DbDefinition{
+    function getMermaidDiagramDb(type: "ts" | "sqlserver" | "sqlite" | "postgres" | undefined): DbDefinition{
         const model = ui.editor.graph.getModel();
         // same models from mermaid for diagram relationships
         // only difference is entities is an array rather than object to allow duplicate tables
@@ -298,7 +298,7 @@ Draw.loadPlugin(function(ui) {
         return db;
     }
 
-    function generateSql(type: "mysql" | "sqlserver" | "sqlite" | "postgres" | undefined) {
+    function generateSql(type: "ts" | "sqlserver" | "sqlite" | "postgres" | undefined) {
 
         // get diagram model
         const db = getMermaidDiagramDb(type);
@@ -325,37 +325,13 @@ Draw.loadPlugin(function(ui) {
     resetBtnGenSQL.style.padding = "4px";
     divGenSQL.appendChild(resetBtnGenSQL);
 
-    const btnGenSQL_mysql = mxUtils.button("MySQL", function() {
-        generateSql("mysql");
+    const btnGenSQL_ts = mxUtils.button("TS", function() {
+        generateSql("ts");
     });
 
-    btnGenSQL_mysql.style.marginTop = "8px";
-    btnGenSQL_mysql.style.padding = "4px";
-    divGenSQL.appendChild(btnGenSQL_mysql);
-
-    const btnGenSQL_sqlserver = mxUtils.button("SQL Server", function() {
-        generateSql("sqlserver");
-    });
-
-    btnGenSQL_sqlserver.style.marginTop = "8px";
-    btnGenSQL_sqlserver.style.padding = "4px";
-    divGenSQL.appendChild(btnGenSQL_sqlserver);
-
-    const btnGenSQL_postgres = mxUtils.button("PostgreSQL", function() {
-        generateSql("postgres");
-    });
-
-    btnGenSQL_postgres.style.marginTop = "8px";
-    btnGenSQL_postgres.style.padding = "4px";
-    divGenSQL.appendChild(btnGenSQL_postgres);
-
-    const btnGenSQL_sqlite = mxUtils.button("Sqlite", function() {
-        generateSql("sqlite");
-    });
-
-    btnGenSQL_sqlite.style.marginTop = "8px";
-    btnGenSQL_sqlite.style.padding = "4px";
-    divGenSQL.appendChild(btnGenSQL_sqlite);
+    btnGenSQL_ts.style.marginTop = "8px";
+    btnGenSQL_ts.style.padding = "4px";
+    divGenSQL.appendChild(btnGenSQL_ts);
 
     // Adds action
     ui.actions.addAction("tonosql", function() {
@@ -382,37 +358,50 @@ Draw.loadPlugin(function(ui) {
 
 
     //Create Base div
-    const divFromSQL = document.createElement("div");
-    divFromSQL.style.userSelect = "none";
-    divFromSQL.style.overflow = "hidden";
-    divFromSQL.style.padding = "10px";
-    divFromSQL.style.height = "100%";
+    const divFromNOSQL = document.createElement("div");
+    divFromNOSQL.style.userSelect = "none";
+    divFromNOSQL.style.overflow = "hidden";
+    divFromNOSQL.style.padding = "10px";
+    divFromNOSQL.style.height = "100%";
 
     var graph = ui.editor.graph;
 
-    const sqlInputFromSQL = document.createElement("textarea");
-    sqlInputFromSQL.style.height = "200px";
-    sqlInputFromSQL.style.width = "100%";
-    const defaultReset = `/*\n\tDrawio default value\n\tPlugin: sql\n\tVersion: ${pluginVersion}\n*/\n\nCREATE TABLE Persons\n(\n    PersonID int NOT NULL,\n    LastName varchar(255),\n    " +
-    "FirstName varchar(255),\n    Address varchar(255),\n    City varchar(255),\n    Primary Key(PersonID)\n);\n\n" + 
-    "CREATE TABLE Orders\n(\n    OrderID int NOT NULL PRIMARY KEY,\n    PersonID int NOT NULL,\n    FOREIGN KEY ([PersonID]) REFERENCES [Persons]([PersonID])" +
-    "\n);`;
+    const sqlInputFromNOSQL = document.createElement("textarea");
+    sqlInputFromNOSQL.style.height = "200px";
+    sqlInputFromNOSQL.style.width = "100%";
+    const defaultReset = `/*\n\tDrawio default value\n\tPlugin: sql\n\tVersion: ${pluginVersion}\n*/\n\n
+export interface WeatherForecast {
+  /** @format date-time */
+  date?: string;
+  /** @format int32 */
+  temperatureC?: number;
+  /** @format int32 */
+  temperatureF?: number;
+  summary?: string | null;
+  nestedProp: string[]
+  child?: Child
+}
 
-    sqlInputFromSQL.value = defaultReset;
-    mxUtils.br(divFromSQL);
-    divFromSQL.appendChild(sqlInputFromSQL);
+export interface Child {
+  name: string
+}
+    `;
+
+    sqlInputFromNOSQL.value = defaultReset;
+    mxUtils.br(divFromNOSQL);
+    divFromNOSQL.appendChild(sqlInputFromNOSQL);
 
     var graph = ui.editor.graph;
 
     // Extends Extras menu
     mxResources.parse("fromNoSql=From TS");
 
-    const wndFromSQL = new mxWindow(mxResources.get("fromNoSql"), divFromSQL, document.body.offsetWidth - 480, 140,
+    const wndFromNOSQL = new mxWindow(mxResources.get("fromNoSql"), divFromNOSQL, document.body.offsetWidth - 480, 140,
         320, 320, true, true);
-    wndFromSQL.destroyOnClose = false;
-    wndFromSQL.setMaximizable(false);
-    wndFromSQL.setResizable(false);
-    wndFromSQL.setClosable(true);
+    wndFromNOSQL.destroyOnClose = false;
+    wndFromNOSQL.setMaximizable(false);
+    wndFromNOSQL.setResizable(false);
+    wndFromNOSQL.setClosable(true);
 
     function AddRow(propertyModel: PropertyModel, tableName: string) {
         
@@ -446,32 +435,34 @@ Draw.loadPlugin(function(ui) {
 
     };
 
-    function parseSql(text: string, type?: "mysql" | "sqlite" | "postgres" | "sqlserver" | undefined) {
+    function parseSql(text: string, type?: "ts" | undefined) {
         // reset values
         cells = [];
         tableCell = null;
         rowCell = null;
         // load parser
-        const parser = new SqlSimpleParser(type);
+        // const parser = new SqlSimpleParser(type);
         
 
-        const models = parser
-            .feed(text)
-            .WithoutEnds()
-            .WithEnds()
-            .ToModel();
+        // const models = parser
+        //     .feed(text)
+        //     .WithoutEnds()
+        //     .WithEnds()
+        //     .ToModel();
+        const models: any | null = null;
         
-
-        foreignKeyList = models.ForeignKeyList;
-        primaryKeyList = models.PrimaryKeyList;
-        tableList = models.TableList;
-        exportedTables = tableList.length;
+        if(models){ 
+            foreignKeyList = models.ForeignKeyList;
+            primaryKeyList = models.PrimaryKeyList;
+            tableList = models.TableList;
+            exportedTables = tableList.length;
+        }
 
         //Create Table in UI
         CreateTableUI(type);
     };
 
-    function CreateTableUI(type: "mysql" | "sqlite" | "postgres" | "sqlserver" | undefined) {
+    function CreateTableUI(type: "ts" | undefined) {
         tableList.forEach(function(tableModel) {
             //Define table size width
             const maxNameLenght = 100 + tableModel.Name.length;
@@ -575,58 +566,34 @@ Draw.loadPlugin(function(ui) {
             graph.scrollCellToVisible(graph.getSelectionCell());
         }
 
-        wndFromSQL.setVisible(false);
+        wndFromNOSQL.setVisible(false);
     };
 
-    mxUtils.br(divFromSQL);
+    mxUtils.br(divFromNOSQL);
 
-    const resetBtnFromSQL = mxUtils.button(mxResources.get("reset"), function() {
-        sqlInputFromSQL.value = defaultReset;
+    const resetBtnFromNOSQL = mxUtils.button(mxResources.get("reset"), function() {
+        sqlInputFromNOSQL.value = defaultReset;
     });
 
-    resetBtnFromSQL.style.marginTop = "8px";
-    resetBtnFromSQL.style.marginRight = "4px";
-    resetBtnFromSQL.style.padding = "4px";
-    divFromSQL.appendChild(resetBtnFromSQL);
+    resetBtnFromNOSQL.style.marginTop = "8px";
+    resetBtnFromNOSQL.style.marginRight = "4px";
+    resetBtnFromNOSQL.style.padding = "4px";
+    divFromNOSQL.appendChild(resetBtnFromNOSQL);
 
-    const btnFromSQL_mysql = mxUtils.button("Insert MySQL", function() {
-        parseSql(sqlInputFromSQL.value, "mysql");
+    const btnFromNOSQL_ts = mxUtils.button("Insert TS", function() {
+        parseSql(sqlInputFromNOSQL.value, "ts");
     });
 
-    btnFromSQL_mysql.style.marginTop = "8px";
-    btnFromSQL_mysql.style.padding = "4px";
-    divFromSQL.appendChild(btnFromSQL_mysql);
-
-    const btnFromSQL_sqlserver = mxUtils.button("Insert SQL Server", function() {
-        parseSql(sqlInputFromSQL.value, "sqlserver");
-    });
-
-    btnFromSQL_sqlserver.style.marginTop = "8px";
-    btnFromSQL_sqlserver.style.padding = "4px";
-    divFromSQL.appendChild(btnFromSQL_sqlserver);
-
-    const btnFromSQL_postgres = mxUtils.button("Insert PostgreSQL", function() {
-        parseSql(sqlInputFromSQL.value, "postgres");
-    });
-
-    btnFromSQL_postgres.style.marginTop = "8px";
-    btnFromSQL_postgres.style.padding = "4px";
-    divFromSQL.appendChild(btnFromSQL_postgres);
-
-    const btnFromSQL_sqlite = mxUtils.button("Insert Sqlite", function() {
-        parseSql(sqlInputFromSQL.value, "sqlite");
-    });
-
-    btnFromSQL_sqlite.style.marginTop = "8px";
-    btnFromSQL_sqlite.style.padding = "4px";
-    divFromSQL.appendChild(btnFromSQL_sqlite);
+    btnFromNOSQL_ts.style.marginTop = "8px";
+    btnFromNOSQL_ts.style.padding = "4px";
+    divFromNOSQL.appendChild(btnFromNOSQL_ts);
 
     // Adds action
     ui.actions.addAction("fromNoSql", function() {
-        wndFromSQL.setVisible(!wndFromSQL.isVisible());
+        wndFromNOSQL.setVisible(!wndFromNOSQL.isVisible());
 
-        if (wndFromSQL.isVisible()) {
-            sqlInputFromSQL.focus();
+        if (wndFromNOSQL.isVisible()) {
+            sqlInputFromNOSQL.focus();
         }
     });
     // end import diagrams from sql text methods
