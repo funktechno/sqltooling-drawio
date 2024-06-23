@@ -3,6 +3,7 @@ import { DbDefinition, DbRelationshipDefinition } from "@funktechno/little-merma
 import { ColumnQuantifiers, TableAttribute, TableEntity } from "./types/sql-plugin-types";
 import { SqlSimpleParser } from "@funktechno/sqlsimpleparser";
 import { ForeignKeyModel, PrimaryKeyModel, PropertyModel, TableModel } from "@funktechno/sqlsimpleparser/lib/types";
+declare const window: Customwindow;
 
 /**
  * SQL Tools Plugin for importing diagrams from SQL DDL and exporting to SQL.
@@ -30,7 +31,7 @@ Draw.loadPlugin(function(ui) {
     const theMenuExportAs = ui.menus.get("exportAs");
     let buttonLabel = "tosql=To SQL";
     // vscode extension support
-    if(!(theMenuExportAs && theMenuExportAs.enabled)) {
+    if(!(theMenuExportAs && !window.VsCodeApi)) {
         buttonLabel = "tosql=Export As SQL";
     }
     // Extends Extras menu
@@ -391,10 +392,10 @@ Draw.loadPlugin(function(ui) {
     const sqlInputFromSQL = document.createElement("textarea");
     sqlInputFromSQL.style.height = "200px";
     sqlInputFromSQL.style.width = "100%";
-    const defaultReset = "/*\n\tDrawio default value\n\tPlugin: sql\n\tVersion: ${pluginVersion}\n*/\n\nCREATE TABLE Persons\n(\n    PersonID int NOT NULL,\n    LastName varchar(255),\n    " +
+    const defaultReset = `/*\n\tDrawio default value\n\tPlugin: sql\n\tVersion: ${pluginVersion}\n*/\n\nCREATE TABLE Persons\n(\n    PersonID int NOT NULL,\n    LastName varchar(255),\n    " +
     "FirstName varchar(255),\n    Address varchar(255),\n    City varchar(255),\n    Primary Key(PersonID)\n);\n\n" + 
     "CREATE TABLE Orders\n(\n    OrderID int NOT NULL PRIMARY KEY,\n    PersonID int NOT NULL,\n    FOREIGN KEY ([PersonID]) REFERENCES [Persons]([PersonID])" +
-    "\n);";
+    "\n);`;
 
     sqlInputFromSQL.value = defaultReset;
     mxUtils.br(divFromSQL);
@@ -639,7 +640,7 @@ Draw.loadPlugin(function(ui) {
             ui.menus.addMenuItems(menu, ["fromSql"], parent);
         };
     }
-    if(theMenuExportAs && theMenuExportAs.enabled) {
+    if(theMenuExportAs && !window.VsCodeApi) {
         var oldMenuExportAs = theMenuExportAs.funct;
 
         theMenuExportAs.funct = function(...args) {
