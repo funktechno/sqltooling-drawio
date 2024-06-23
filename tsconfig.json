@@ -112,7 +112,7 @@
     "deps",
     "node_modules",
     "**/tests/*",
-    "src/*.spec.ts",
+    "src/*.spec.ts"
     // "src/mermaid"
   ]
 }

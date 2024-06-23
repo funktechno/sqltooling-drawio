@@ -17,8 +17,9 @@
     "build": "tsc && npm run build:types",
     "build:types": "tsc -p tsconfig-types.json",
     "build:help": "tsc --help",
-    "build:client": "npm run mkdir:dist && browserify src/sql.ts -p [ tsify --noImplicitAny ] > dist/sql.js",
-    "mkdir:dist": "node ./build/createDistFolder.js"
+    "build:client": "npm run mkdir:dist && browserify src/sql.ts -p [ tsify --noImplicitAny ] > dist/sql.js && npm run updateVersion:dist",
+    "mkdir:dist": "node ./build/createDistFolder.js",
+    "updateVersion:dist": "node ./build/updateVersion.js"
   },
   "repository": {
     "type": "git",
