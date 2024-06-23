@@ -20,7 +20,7 @@ declare class mxCell {
      * @param geometry Optional <mxGeometry> that specifies the geometry.
      * @param style Optional formatted string that defines the style.
      */
-    constructor(value?:string, geometry?:any, style?: string);
+    constructor(value?: string, geometry?: any, style?: string);
 
     public vertex: boolean;
     public connectable: boolean;
@@ -42,7 +42,7 @@ declare class mxRectangle {
      * @param width 
      * @param height 
      */
-    constructor(x:number, y:number, width:number, height:number);
+    constructor(x: number, y: number, width: number, height: number);
 
     public width: number;
     public height: number;
@@ -51,7 +51,7 @@ declare class mxRectangle {
 }
 
 declare class mxGeometry extends mxRectangle {
-    constructor(x:number, y:number, width:number, height:number);
+    constructor(x: number, y: number, width: number, height: number);
 }
 
 
@@ -61,7 +61,7 @@ declare class mxPoint {
      * @param x 
      * @param y 
      */
-    constructor(x:number, y:number);
+    constructor(x: number, y: number);
 
     public x: number;
     public y: number;
@@ -73,7 +73,7 @@ declare class sb {
      * @param cell 
      * @param value 
      */
-    static cloneCell(cell:mxCell, value:string): mxCell;
+    static cloneCell(cell: mxCell, value: string): mxCell;
 }
 
 declare class mxResources {
@@ -169,7 +169,7 @@ declare interface DrawioGraph {
 	setSelectionCells(cells: DrawioCell[]);
 	importCells(cells: mxCell[], x: number, y: number);
 	getPreferredSizeForCell(cell: mxCell): CellSize;
-	insertEdge(parent: mxCell | null, id:string | null, value:string, source?: mxCell, target?: mxCell, style?:string): DrawioCell;
+	insertEdge(parent: mxCell | null, id: string | null, value: string, source?: mxCell, target?: mxCell, style?: string): DrawioCell;
 	getModel(): DrawioGraphModel;
     getFreeInsertPoint(): mxPoint;
 	getSelectionCell(): DrawioCell;
@@ -180,7 +180,7 @@ declare interface DrawioGraph {
 
     addMouseListener(listener: {
         mouseMove?: (graph: DrawioGraph, event: mxMouseEvent) => void;
-        mouseDown?: (graph: DrawioGraph, event: mxMouseEvent) => void
+        mouseDown?: (graph: DrawioGraph, event: mxMouseEvent) => void;
         mouseUp?: (graph: DrawioGraph, event: mxMouseEvent) => void;
     }): void;
 }
