@@ -17,7 +17,7 @@
     "build": "tsc && npm run build:types",
     "build:types": "tsc -p tsconfig-types.json",
     "build:help": "tsc --help",
-    "build:client": "npm run mkdir:dist && browserify src/index.ts -p [ tsify --noImplicitAny ] > dist/littleMermaid.js",
+    "build:client": "npm run mkdir:dist && browserify src/sql.ts -p [ tsify --noImplicitAny ] > dist/sql.js",
     "mkdir:dist": "node ./build/createDistFolder.js"
   },
   "repository": {
@@ -37,10 +37,16 @@
   "homepage": "https://github.com/lastlink/sqltooling-drawio#readme",
   "dependencies": {
     "@funktechno/little-mermaid-2-the-sql": "^0.1.1",
-    "@funktechno/sqlsimpleparser": "^0.1.0"
+    "@funktechno/sqlsimpleparser": "^0.1.0",
+    "browserify": "^17.0.0",
+    "tsify": "^5.0.2"
   },
   "devDependencies": {
+    "@types/eslint": "^7.2.4",
     "@types/jest": "^29.0.3",
+    "@typescript-eslint/eslint-plugin": "^2.24.0",
+    "@typescript-eslint/parser": "^2.24.0",
+    "eslint": "^6.8.0",
     "jest": "^29.0.3",
     "jest-junit": "^16.0.0",
     "jest-serial-runner": "^1.1.0",
