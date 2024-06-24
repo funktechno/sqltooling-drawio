@@ -1,4 +1,3 @@
-console.log("starting nosql plugin");
 import { DbDefinition, DbRelationshipDefinition } from "@funktechno/little-mermaid-2-the-sql/lib/src/types";
 import { ColumnQuantifiers, TableAttribute, TableEntity } from "./types/sql-plugin-types";
 import { DatabaseModel, ForeignKeyModel, PrimaryKeyModel, PropertyModel, TableModel } from "@funktechno/sqlsimpleparser/lib/types";
@@ -14,10 +13,7 @@ declare const window: Customwindow;
  * SQL Tools Plugin for importing and exporting typescript interfaces.
  * Version: <VERSION>
  */
-
 Draw.loadPlugin(function(ui) {
-    console.log("loading nosql plugin");
-
     // export sql methods
     const pluginVersion = "<VERSION>";
 
@@ -306,31 +302,21 @@ Draw.loadPlugin(function(ui) {
     }
 
     function generateNoSql(type: "ts" | "openapi" | undefined) {
-
         // get diagram model
         const db = getMermaidDiagramDb(type);
-        debugger;
         const openapi = dbToOpenApi(db);
-        // load parser
-        // const parser = new DbParser(type as string, db);
-        // // generate
         let result = "";
         if(type == "ts"){
             
             const { data: doc } = convertOpenApiToCoreTypes( openapi );
             const { data: sourceCode } = convertCoreTypesToTypeScript( doc );
-             //parser.getSQLDataDefinition();
             result = `/*\n\tGenerated in drawio\n\tDatabase: ${type}\n\tPlugin: nosql\n\tVersion: ${pluginVersion}\n*/\n\n` + result;
             result += sourceCode;
         
         } else if(type == "openapi"){
            result = JSON.stringify(openapi, null, 2);
         }
-        // sql = sql.trim();
-        // // update sql value in text area
         sqlInputGenSQL.value = result;
-        // // TODO: use selection as well?
-        // const modelSelected = ui.editor.graph.getSelectionModel();
     };
     /**
      * convert db to openapi
@@ -371,11 +357,11 @@ Draw.loadPlugin(function(ui) {
                     if(!propName || schema[key].properties[propName]){
                         continue;
                     }
-                    const attType = attribute.attributeType?.split(" ");
+                    const attType = attribute.attributeType?.split(" ") ?? [];
                     const property: JSONSchema4 = {
                         title: `${key}.${propName}`,
                         nullable: attribute.attributeType?.includes("nullable") ?? false,
-                        type: (attType ?? "string") as JSONSchema4TypeName 
+                        type: (attType[0] ?? "string") as JSONSchema4TypeName 
                     };
                     schema[key].properties[attribute.attributeName!] = property;
                 }
