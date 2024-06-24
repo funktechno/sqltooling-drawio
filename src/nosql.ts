@@ -568,20 +568,18 @@ export interface Child {
                     PrimaryKeyList: [],
                     ForeignKeyList: [],
                 };
-
+                
                 for (const key in schemas) {
                     if (Object.prototype.hasOwnProperty.call(schemas, key)) {
                         const schema = schemas[key] as JSONSchema4;
                         const tableModel: TableModel = {
-                            Name: key,
+                            Name: dbTypeEnds(key),
                             Properties: [],
                         };
                         for (const propertyKey in schema.properties) {
                             if (Object.prototype.hasOwnProperty.call(schema.properties, propertyKey)) {
                                 const property = schema.properties[propertyKey];
                                 const propertyModel: PropertyModel = GeneratePropertyModel(key, propertyKey, property);
-                                tableModel.Properties.push(propertyModel);
-                                
                                 if(propertyModel.ColumnProperties.includes("object") || 
                                     propertyModel.ColumnProperties.includes("array")) {
                                     let refName: string| null | undefined= null;
@@ -591,17 +589,30 @@ export interface Child {
                                         refName = (property.items as JSONSchema4).$ref?.split("/").pop();
                                     }
                                     if(refName) {
+                                        
+                                        const primaryKeyModel: ForeignKeyModel = {
+                                            PrimaryKeyTableName: dbTypeEnds(key),
+                                            ReferencesTableName: dbTypeEnds(refName),
+                                            PrimaryKeyName: dbTypeEnds(propertyKey),
+                                            // should just point to first property in uml table
+                                            ReferencesPropertyName: "",
+                                            IsDestination: false
+                                        };
                                         const foreignKeyModel: ForeignKeyModel = {
-                                            ReferencesTableName: key,
-                                            PrimaryKeyTableName: refName,
-                                            ReferencesPropertyName: propertyKey,
+                                            ReferencesTableName: dbTypeEnds(key),
+                                            PrimaryKeyTableName: dbTypeEnds(refName),
+                                            ReferencesPropertyName: dbTypeEnds(propertyKey),
                                             // should just point to first property in uml table
                                             PrimaryKeyName: "",
                                             IsDestination: true
                                         };
                                         models.ForeignKeyList.push(foreignKeyModel);
+                                        models.ForeignKeyList.push(primaryKeyModel);
+                                        propertyModel.IsForeignKey = true;
                                     }
                                 }
+                                
+                                tableModel.Properties.push(propertyModel);
                             }
                         }
 
@@ -610,6 +621,13 @@ export interface Child {
                 }
                 for (let i = 0; i < models.ForeignKeyList.length; i++) {
                     const fk = models.ForeignKeyList[i];
+                    if(!fk.ReferencesPropertyName){
+                        // match to first entry
+                        const property = models.TableList.find(t => t.Name == fk.ReferencesTableName)?.Properties[0];
+                        if(property){
+                            models.ForeignKeyList[i].ReferencesPropertyName = property.Name;
+                        }
+                    }
                     if(!fk.PrimaryKeyName){
                         // match to first entry
                         const property = models.TableList.find(t => t.Name == fk.PrimaryKeyTableName)?.Properties[0];
@@ -714,10 +732,10 @@ export interface Child {
                                         if(col.mxObjectId.indexOf("mxCell") !== -1) {
                                             if(col.style && col.style.trim().startsWith("shape=partialRectangle")){
                                                 const attribute = getDbLabel(col.value, columnQuantifiers);
-                                                if(isPrimaryTable && attribute.attributeName == fk.PrimaryKeyName){
+                                                if(isPrimaryTable && dbTypeEnds(attribute.attributeName) == fk.PrimaryKeyName){
                                                     targetCell = col;
                                                     break;
-                                                } else if(isForeignTable && attribute.attributeName == fk.ReferencesPropertyName){
+                                                } else if(isForeignTable && dbTypeEnds(attribute.attributeName) == fk.ReferencesPropertyName){
                                                     sourceCell = col;
                                                     break;
                                                 }
@@ -823,12 +841,21 @@ function GeneratePropertyModel(tableName: string, propertyName: string, property
         columnProperties += " nullable";
     }
     const result: PropertyModel = {
-        Name: propertyName,
+        Name: dbTypeEnds(propertyName),
         IsPrimaryKey: false,
         IsForeignKey: false,
         ColumnProperties: columnProperties,
-        TableName: tableName,
+        TableName: dbTypeEnds(tableName),
         ForeignKey: [],
     };
     return result;
+}
+function dbTypeEnds(label: string): string {
+    const char1 = "`";
+    const char2 = "`";
+    // if (type == "mysql") {
+    //   char1 = "`";
+    //   char2 = "`";
+    // } 
+    return `${char1}${label}${char2}`;
 }
