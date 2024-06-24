@@ -1,5 +1,6 @@
 # sqltooling-drawio
-plugins for sql tooling in drawio
+* 3rd party plugins for sql tooling in drawio
+* contributions welcome
 
 ## Getting Started
 * see https://github.com/ariel-bentu/tam-drawio for multiple install options
