@@ -5,6 +5,7 @@
     ],
     "parserOptions": {
         "ecmaVersion": 2018,
+        "allowImportExportEverywhere": true,
         "sourceType": "module"
     },
     "rules": {
@@ -20,6 +21,9 @@
         "@typescript-eslint/camelcase": "off",
         "@typescript-eslint/no-explicit-any": "off",
         "no-multiple-empty-lines": "error",
+        "no-use-before-define": "off",
+        "@typescript-eslint/no-non-null-assertion": "off",
+        "@typescript-eslint/no-use-before-define": "off",
         "@typescript-eslint/no-inferrable-types": [
             "warn",
             {
