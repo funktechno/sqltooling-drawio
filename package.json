@@ -18,8 +18,9 @@
     "build:types": "tsc -p tsconfig.json",
     "build:help": "tsc --help",
     "build:client": "npm run mkdir:dist && browserify src/sql.ts -p [ tsify --noImplicitAny ] > dist/sql.js && npm run updateVersion:dist",
-    "build:client:nosql:legacy": "npm run mkdir:dist && browserify src/nosql.ts -p [ tsify --noImplicitAny ] > dist/nosql.js && npm run updateVersion:dist",
-    "build:client:nosql": "npm run mkdir:dist && gulp && npm run updateVersion:dist",
+    "build:client:nosql": "npm run mkdir:dist && browserify src/nosql.ts -p [ tsify --noImplicitAny ] > dist/nosql.js && npm run updateVersion:dist",
+    "build:client:nosql:manual": "browserify src/nosql.ts -p [ tsify --noImplicitAny ] > \"absolutePath\\drawio-desktop\\drawio\\src\\main\\webapp\\plugins\\sql.js\"",
+    "build:client:nosql:min": "npm run mkdir:dist && gulp && npm run updateVersion:dist",
     "mkdir:dist": "node ./build/createDistFolder.js",
     "updateVersion:dist": "node ./build/updateVersion.js"
   },
