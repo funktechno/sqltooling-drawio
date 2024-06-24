@@ -5,7 +5,7 @@ plugins for sql tooling in drawio
 * see https://github.com/ariel-bentu/tam-drawio for multiple install options
 * download plugin file
     * [sql.js](https://raw.githubusercontent.com/funktechno/sqltooling-drawio/main/dist/sql.js) - import/export SQL DLLS
-    * [nosql.js](https://raw.githubusercontent.com/funktechno/sqltooling-drawio/main/dist/nosql.js) - import/export typescript interfaces
+    * [nosql.js](https://raw.githubusercontent.com/funktechno/sqltooling-drawio/main/dist/nosql.js) - import/export typescript interfaces (NOT vscode compatible)
     * or clone project `git clone --branch main git@github.com:funktechno/sqltooling-drawio.git` and check `dist folder`
 * vscode [Draw.io Integration](https://marketplace.visualstudio.com/items?itemName=hediet.vscode-drawio)
     * settings.json

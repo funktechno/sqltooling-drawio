@@ -13,10 +13,14 @@ console.log("Updating to version " + package.version);
 files.forEach((file) => {
     const filePath = `${directoryPath}/${file}`;
     let content = fs.readFileSync(filePath, "utf8");
+    let updated = false;
     while(content.includes(oldText)) {
+        updated = true
         content = content.replace(oldText, package.version);
     }
-    // content = content.replace(new RegExp(oldText, "g"), newText);
-    fs.writeFileSync(filePath, content, "utf8");
-    console.log(`Replaced text in ${file}`);
+    if(updated) {
+        // content = content.replace(new RegExp(oldText, "g"), newText);
+        fs.writeFileSync(filePath, content, "utf8");
+        console.log(`Replaced text in ${file}`);
+    }
 });
