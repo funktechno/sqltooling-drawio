@@ -52,19 +52,11 @@ Draw.loadPlugin(function(ui) {
      * return text quantifiers for dialect
      * @returns json
      */
-    function GetColumnQuantifiers(type: "ts" | "openapi" | undefined): ColumnQuantifiers {
+    function GetColumnQuantifiers(): ColumnQuantifiers {
         const chars = {
-            Start: "\"",
-            End: "\"",
+            Start: "`",
+            End: "`",
         };
-        // if (type == "ts") {
-            chars.Start = "`";
-            chars.End = "`";
-        // }
-        // else if (type == "sqlserver") {
-        //     chars.Start = "[";
-        //     chars.End = "]";
-        // }
         return chars;
     }
     /**
@@ -105,7 +97,7 @@ Draw.loadPlugin(function(ui) {
         return name.replace(/\[|\]|\(|\"|\'|\`/g, "").trim();
     }
 
-    function getMermaidDiagramDb(type: "ts" | "openapi" | undefined): DbDefinition{
+    function getMermaidDiagramDb(): DbDefinition{
         const model = ui.editor.graph.getModel();
         // same models from mermaid for diagram relationships
         // only difference is entities is an array rather than object to allow duplicate tables
@@ -125,7 +117,7 @@ Draw.loadPlugin(function(ui) {
                             const col = mxcell.children[c];
                             if(col.mxObjectId.indexOf("mxCell") !== -1) {
                                 if(col.style && col.style.trim().startsWith("shape=partialRectangle")){
-                                    const columnQuantifiers = GetColumnQuantifiers(type);
+                                    const columnQuantifiers = GetColumnQuantifiers();
                                     //Get delimiter of column name
                                     //Get full name
                                     const attribute = getDbLabel(col.value, columnQuantifiers);
@@ -167,14 +159,14 @@ Draw.loadPlugin(function(ui) {
                                                         if((targetIsPrimary || sourceIsPrimary) &&
                                                             !(targetIsPrimary && sourceIsPrimary)
                                                         ){
-                                                            var sourceId = edge.source.value;
-                                                            var sourceAttr = getDbLabel(sourceId, columnQuantifiers);
+                                                            let sourceId = edge.source.value;
+                                                            const sourceAttr = getDbLabel(sourceId, columnQuantifiers);
                                                             sourceId = sourceAttr.attributeName;
-                                                            var sourceEntity = RemoveNameQuantifiers(edge.source.parent.value);
-                                                            var targetId = edge.target.value;
-                                                            var targetAttr = getDbLabel(targetId, columnQuantifiers);
+                                                            const sourceEntity = RemoveNameQuantifiers(edge.source.parent.value);
+                                                            let targetId = edge.target.value;
+                                                            const targetAttr = getDbLabel(targetId, columnQuantifiers);
                                                             targetId = targetAttr.attributeName;
-                                                            var targetEntity = RemoveNameQuantifiers(edge.target.parent.value);
+                                                            const targetEntity = RemoveNameQuantifiers(edge.target.parent.value);
                                                             // entityA primary
                                                             // entityB foreign
                                                             const relationship: DbRelationshipDefinition = {
@@ -191,22 +183,22 @@ Draw.loadPlugin(function(ui) {
                                                                     `[${targetEntity}.${targetId}] to [${sourceEntity}.${sourceId}]`
                                                             };
                                                             // check that is doesn't already exist
-                                                            var exists = relationships.findIndex(r => r.entityA == relationship.entityA && r.entityB == relationship.entityB && r.roleA == relationship.roleA);
+                                                            const exists = relationships.findIndex(r => r.entityA == relationship.entityA && r.entityB == relationship.entityB && r.roleA == relationship.roleA);
                                                             if(exists ==-1){
                                                                 relationships.push(relationship);
                                                             }
                                                         } else if(targetIsPrimary && sourceIsPrimary){
                                                             // add a new many to many table
-                                                            var sourceId = edge.source.value;
-                                                            sourceAttr = getDbLabel(sourceId, columnQuantifiers);
+                                                            let sourceId = edge.source.value;
+                                                            const sourceAttr = getDbLabel(sourceId, columnQuantifiers);
                                                             sourceAttr.attributeKeyType = "PK";
                                                             sourceId = sourceAttr.attributeName;
-                                                            var sourceEntity = RemoveNameQuantifiers(edge.source.parent.value);
-                                                            var targetId = edge.target.value;
-                                                            targetAttr = getDbLabel(targetId, columnQuantifiers);
+                                                            const sourceEntity = RemoveNameQuantifiers(edge.source.parent.value);
+                                                            let targetId = edge.target.value;
+                                                            const targetAttr = getDbLabel(targetId, columnQuantifiers);
                                                             targetAttr.attributeKeyType = "PK";
                                                             targetId = targetAttr.attributeName;
-                                                            var targetEntity = RemoveNameQuantifiers(edge.target.parent.value);
+                                                            const targetEntity = RemoveNameQuantifiers(edge.target.parent.value);
                                                             const compositeEntity = {
                                                                 name: RemoveNameQuantifiers(sourceEntity) + "_" + RemoveNameQuantifiers(targetEntity),
                                                                 attributes: [sourceAttr, targetAttr]
@@ -231,7 +223,7 @@ Draw.loadPlugin(function(ui) {
                                                                 roleA: `[${sourceEntity}.${sourceId}] to [${compositeEntity.name}.${sourceId}]`
                                                             };
                                                             // check that is doesn't already exist
-                                                            var exists = relationships.findIndex(r => r.entityA == relationship.entityA && r.entityB == relationship.entityB && r.roleA == relationship.roleA);
+                                                            let exists = relationships.findIndex(r => r.entityA == relationship.entityA && r.entityB == relationship.entityB && r.roleA == relationship.roleA);
                                                             if(exists ==-1){
                                                                 relationships.push(relationship);
                                                             }
@@ -303,7 +295,7 @@ Draw.loadPlugin(function(ui) {
 
     function generateNoSql(type: "ts" | "openapi" | undefined) {
         // get diagram model
-        const db = getMermaidDiagramDb(type);
+        const db = getMermaidDiagramDb();
         const openapi = dbToOpenApi(db);
         let result = "";
         if(type == "ts"){
@@ -323,7 +315,7 @@ Draw.loadPlugin(function(ui) {
      * @param db 
      * @returns 
      */
-    function dbToOpenApi(db: DbDefinition):PartialOpenApiSchema {
+    function dbToOpenApi(db: DbDefinition): PartialOpenApiSchema {
         const result: PartialOpenApiSchema = {
             openapi: "3.0.0",
             info: {
@@ -429,8 +421,6 @@ Draw.loadPlugin(function(ui) {
     divFromNOSQL.style.padding = "10px";
     divFromNOSQL.style.height = "100%";
 
-    var graph = ui.editor.graph;
-
     const sqlInputFromNOSQL = document.createElement("textarea");
     sqlInputFromNOSQL.style.height = "200px";
     sqlInputFromNOSQL.style.width = "100%";
@@ -529,7 +519,7 @@ export interface Child {
     mxUtils.br(divFromNOSQL);
     divFromNOSQL.appendChild(sqlInputFromNOSQL);
 
-    var graph = ui.editor.graph;
+    // const graph = ui.editor.graph;
 
     // Extends Extras menu
     mxResources.parse("fromNoSql=From NoSQL");
@@ -677,7 +667,7 @@ export interface Child {
                 primaryKeyList = models.PrimaryKeyList;
                 tableList = models.TableList;
                 exportedTables = tableList.length;
-                CreateTableUI(type);
+                CreateTableUI();
             }
          
         } catch (error) {
@@ -686,7 +676,7 @@ export interface Child {
         }
     };
 
-    function CreateTableUI(type: "ts" | "openapi" | undefined) {
+    function CreateTableUI() {
         tableList.forEach(function(tableModel) {
             //Define table size width
             const maxNameLenght = 100 + tableModel.Name.length;
@@ -731,8 +721,8 @@ export interface Child {
             graph.setSelectionCells(graph.importCells(cells, x, y));
             // add foreign key edges
             const model = graph.getModel();
-            const columnQuantifiers = GetColumnQuantifiers(type);
-            const pt = graph.getFreeInsertPoint();
+            const columnQuantifiers = GetColumnQuantifiers();
+            // const pt = graph.getFreeInsertPoint();
             foreignKeyList.forEach(function(fk){
                 if(fk.IsDestination && fk.PrimaryKeyName && fk.ReferencesPropertyName && 
                     fk.PrimaryKeyTableName && fk.ReferencesTableName) {
@@ -850,7 +840,7 @@ export interface Child {
         };
     }
     if(theMenuExportAs && !window.VsCodeApi) {
-        var oldMenuExportAs = theMenuExportAs.funct;
+        const oldMenuExportAs = theMenuExportAs.funct;
 
         theMenuExportAs.funct = function(...args) {
             const [menu, parent] = args;
@@ -861,7 +851,7 @@ export interface Child {
         // vscode file export sql menu
 	    const menu = ui.menus.get("file");
         if(menu && menu.enabled) {
-            var oldMenuExportAs = menu.funct;
+            const oldMenuExportAs = menu.funct;
             menu.funct = function(...args) {
                 const [menu, parent] = args;
                 oldMenuExportAs.apply(this, args);
