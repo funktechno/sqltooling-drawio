@@ -1,8 +1,10 @@
 import { DbParser } from "@funktechno/little-mermaid-2-the-sql/lib/src/generate-sql-ddl";
 import { DbDefinition, DbRelationshipDefinition } from "@funktechno/little-mermaid-2-the-sql/lib/src/types";
-import { ColumnQuantifiers, TableAttribute, TableEntity } from "./types/sql-plugin-types";
+import { TableAttribute, TableEntity } from "./types/sql-plugin-types";
 import { SqlSimpleParser } from "@funktechno/sqlsimpleparser";
 import { ForeignKeyModel, PrimaryKeyModel, PropertyModel, TableModel } from "@funktechno/sqlsimpleparser/lib/types";
+import { GetColumnQuantifiers, RemoveNameQuantifiers, getDbLabel } from "./utils/sharedUtils";
+import { pluginVersion } from "./utils/constants";
 declare const window: Customwindow;
 
 /**
@@ -12,7 +14,6 @@ declare const window: Customwindow;
 Draw.loadPlugin(function(ui) {
     
     // export sql methods
-    const pluginVersion = "<VERSION>";
 
     //Create Base div
     const divGenSQL = document.createElement("div");
@@ -43,63 +44,6 @@ Draw.loadPlugin(function(ui) {
     wndGenSQL.setMaximizable(false);
     wndGenSQL.setResizable(false);
     wndGenSQL.setClosable(true);
-
-    /**
-     * return text quantifiers for dialect
-     * @returns json
-     */
-    function GetColumnQuantifiers(type: "mysql" | "sqlserver" | "sqlite" | "postgres" | undefined): ColumnQuantifiers {
-        const chars = {
-            Start: "\"",
-            End: "\"",
-        };
-        if (type == "mysql") {
-            chars.Start = "`";
-            chars.End = "`";
-        }
-        else if (type == "sqlserver") {
-            chars.Start = "[";
-            chars.End = "]";
-        }
-        return chars;
-    }
-    /**
-     * sometimes rows have spans or styles, an attempt to remove them
-     * @param {*} label 
-     * @returns 
-     */
-    function removeHtml(label: string){
-        const tempDiv = document.createElement("div");
-        tempDiv.innerHTML = label;
-        const text = tempDiv.textContent || tempDiv.innerText || "";
-        tempDiv.remove();
-        return text;
-    }
-    /**
-     * extract row column attributes
-     * @param {*} label 
-     * @param {*} columnQuantifiers 
-     * @returns 
-     */
-    function getDbLabel(label: string, columnQuantifiers: ColumnQuantifiers): TableAttribute{
-        let result = removeHtml(label);
-        // fix duplicate spaces and different space chars
-        result = result.toString().replace(/\s+/g, " ");
-        const firstSpaceIndex = result[0] == columnQuantifiers.Start &&
-            result.indexOf(columnQuantifiers.End + " ") !== -1
-            ? result.indexOf(columnQuantifiers.End + " ")
-            : result.indexOf(" ");
-        const attributeType = result.substring(firstSpaceIndex + 1).trim();
-        const attributeName = RemoveNameQuantifiers(result.substring(0, firstSpaceIndex + 1));
-        const attribute = {
-            attributeName,
-            attributeType
-        };
-        return attribute;
-    }
-    function RemoveNameQuantifiers(name: string) {
-        return name.replace(/\[|\]|\(|\"|\'|\`/g, "").trim();
-    }
 
     function getMermaidDiagramDb(type: "mysql" | "sqlserver" | "sqlite" | "postgres" | undefined): DbDefinition{
         const model = ui.editor.graph.getModel();
