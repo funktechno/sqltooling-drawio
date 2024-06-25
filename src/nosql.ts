@@ -1,11 +1,13 @@
 import { DbDefinition, DbRelationshipDefinition } from "@funktechno/little-mermaid-2-the-sql/lib/src/types";
-import { ColumnQuantifiers, TableAttribute, TableEntity } from "./types/sql-plugin-types";
+import { TableAttribute, TableEntity } from "./types/sql-plugin-types";
 import { DatabaseModel, ForeignKeyModel, PrimaryKeyModel, PropertyModel, TableModel } from "@funktechno/sqlsimpleparser/lib/types";
 import { JSONSchema4, JSONSchema4TypeName } from "json-schema";
 import { convertCoreTypesToJsonSchema, convertOpenApiToCoreTypes, jsonSchemaDocumentToOpenApi } from "core-types-json-schema";
 import { JsonSchemaDocumentToOpenApiOptions, PartialOpenApiSchema } from "openapi-json-schema";
 import { convertTypeScriptToCoreTypes } from "core-types-ts/dist/lib/ts-to-core-types";
 import { convertCoreTypesToTypeScript } from "core-types-ts";
+import { GetColumnQuantifiers, RemoveNameQuantifiers, dbTypeEnds, getDbLabel } from "./utils/sharedUtils";
+import { pluginVersion } from "./utils/constants";
 
 declare const window: Customwindow;
 
@@ -14,8 +16,6 @@ declare const window: Customwindow;
  * Version: <VERSION>
  */
 Draw.loadPlugin(function(ui) {
-    // export sql methods
-    const pluginVersion = "<VERSION>";
 
     //Create Base div
     const divGenSQL = document.createElement("div");
@@ -48,56 +48,7 @@ Draw.loadPlugin(function(ui) {
     wndGenSQL.setResizable(false);
     wndGenSQL.setClosable(true);
 
-    /**
-     * return text quantifiers for dialect
-     * @returns json
-     */
-    function GetColumnQuantifiers(): ColumnQuantifiers {
-        const chars = {
-            Start: "`",
-            End: "`",
-        };
-        return chars;
-    }
-    /**
-     * sometimes rows have spans or styles, an attempt to remove them
-     * @param {*} label 
-     * @returns 
-     */
-    function removeHtml(label: string){
-        const tempDiv = document.createElement("div");
-        tempDiv.innerHTML = label;
-        const text = tempDiv.textContent || tempDiv.innerText || "";
-        tempDiv.remove();
-        return text;
-    }
-    /**
-     * extract row column attributes
-     * @param {*} label 
-     * @param {*} columnQuantifiers 
-     * @returns 
-     */
-    function getDbLabel(label: string, columnQuantifiers: ColumnQuantifiers): TableAttribute{
-        let result = removeHtml(label);
-        // fix duplicate spaces and different space chars
-        result = result.toString().replace(/\s+/g, " ");
-        const firstSpaceIndex = result[0] == columnQuantifiers.Start &&
-            result.indexOf(columnQuantifiers.End + " ") !== -1
-            ? result.indexOf(columnQuantifiers.End + " ")
-            : result.indexOf(" ");
-        const attributeType = result.substring(firstSpaceIndex + 1).trim();
-        const attributeName = RemoveNameQuantifiers(result.substring(0, firstSpaceIndex + 1));
-        const attribute = {
-            attributeName,
-            attributeType
-        };
-        return attribute;
-    }
-    function RemoveNameQuantifiers(name: string) {
-        return name.replace(/\[|\]|\(|\"|\'|\`/g, "").trim();
-    }
-
-    function getMermaidDiagramDb(): DbDefinition{
+    function getMermaidDiagramDb(type: "ts" | "openapi" | undefined): DbDefinition{
         const model = ui.editor.graph.getModel();
         // same models from mermaid for diagram relationships
         // only difference is entities is an array rather than object to allow duplicate tables
@@ -117,7 +68,7 @@ Draw.loadPlugin(function(ui) {
                             const col = mxcell.children[c];
                             if(col.mxObjectId.indexOf("mxCell") !== -1) {
                                 if(col.style && col.style.trim().startsWith("shape=partialRectangle")){
-                                    const columnQuantifiers = GetColumnQuantifiers();
+                                    const columnQuantifiers = GetColumnQuantifiers(type);
                                     //Get delimiter of column name
                                     //Get full name
                                     const attribute = getDbLabel(col.value, columnQuantifiers);
@@ -295,7 +246,7 @@ Draw.loadPlugin(function(ui) {
 
     function generateNoSql(type: "ts" | "openapi" | undefined) {
         // get diagram model
-        const db = getMermaidDiagramDb();
+        const db = getMermaidDiagramDb(type);
         const openapi = dbToOpenApi(db);
         let result = "";
         if(type == "ts"){
@@ -667,7 +618,7 @@ export interface Child {
                 primaryKeyList = models.PrimaryKeyList;
                 tableList = models.TableList;
                 exportedTables = tableList.length;
-                CreateTableUI();
+                CreateTableUI(type);
             }
          
         } catch (error) {
@@ -676,7 +627,7 @@ export interface Child {
         }
     };
 
-    function CreateTableUI() {
+    function CreateTableUI(type: "ts" | "openapi" | undefined) {
         tableList.forEach(function(tableModel) {
             //Define table size width
             const maxNameLenght = 100 + tableModel.Name.length;
@@ -721,7 +672,7 @@ export interface Child {
             graph.setSelectionCells(graph.importCells(cells, x, y));
             // add foreign key edges
             const model = graph.getModel();
-            const columnQuantifiers = GetColumnQuantifiers();
+            const columnQuantifiers = GetColumnQuantifiers(type);
             // const pt = graph.getFreeInsertPoint();
             foreignKeyList.forEach(function(fk){
                 if(fk.IsDestination && fk.PrimaryKeyName && fk.ReferencesPropertyName && 
@@ -875,14 +826,5 @@ function GeneratePropertyModel(tableName: string, propertyName: string, property
         ForeignKey: [],
     };
     return result;
-}
-function dbTypeEnds(label: string): string {
-    const char1 = "`";
-    const char2 = "`";
-    // if (type == "mysql") {
-    //   char1 = "`";
-    //   char2 = "`";
-    // } 
-    return `${char1}${label}${char2}`;
 }
 
