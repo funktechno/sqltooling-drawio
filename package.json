@@ -1,6 +1,6 @@
 {
   "name": "sqltooling-drawio",
-  "version": "0.0.3",
+  "version": "0.0.4",
   "description": "plugins for sql tooling in drawio",
   "main": "index.js",
   "engines": {
@@ -17,10 +17,13 @@
     "build": "tsc && npm run build:types",
     "build:types": "tsc -p tsconfig.json",
     "build:help": "tsc --help",
-    "build:client": "npm run mkdir:dist && browserify src/sql.ts -p [ tsify --noImplicitAny ] > dist/sql.js && npm run updateVersion:dist",
-    "build:client:nosql": "npm run mkdir:dist && browserify src/nosql.ts -p [ tsify --noImplicitAny ] > dist/nosql.js && npm run updateVersion:dist",
+    "build:client:sql": "browserify src/sql.ts -p [ tsify --noImplicitAny ] > dist/sql.js",
+    "build:client:nosql": "browserify src/nosql.ts -p [ tsify --noImplicitAny ] > dist/nosql.js",
     "build:client:nosql:manual": "browserify src/nosql.ts -p [ tsify --noImplicitAny ] > \"absolutePath\\drawio-desktop\\drawio\\src\\main\\webapp\\plugins\\sql.js\"",
-    "build:client:nosql:min": "npm run mkdir:dist && gulp && npm run updateVersion:dist",
+    "build:client:nosql:min": "gulp nosql-min",
+    "build:client:nosql-ts": "browserify src/nosql-ts.ts -p [ tsify --noImplicitAny ] > dist/nosql-ts.js",
+    "build:client:nosql-ts:min": "gulp nosql-ts-min",
+    "build:client:all": "npm run mkdir:dist && npm run build:client:sql && npm run build:client:nosql && npm run build:client:nosql:min && npm run build:client:nosql-ts && npm run build:client:nosql-ts:min && npm run updateVersion:dist",
     "mkdir:dist": "node ./build/createDistFolder.js",
     "updateVersion:dist": "node ./build/updateVersion.js"
   },

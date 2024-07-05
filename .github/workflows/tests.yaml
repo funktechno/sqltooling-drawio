@@ -19,6 +19,4 @@ jobs:
           node-version: current
       - run: npm ci
       - run: npm test
-      - run: npm run build:client
-      - run: npm run build:client:nosql
-      - run: npm run build:client:nosql:min
+      - run: npm run build:client:all
