@@ -1,11 +1,11 @@
 import { DbDefinition, DbRelationshipDefinition } from "@funktechno/little-mermaid-2-the-sql/lib/src/types";
-import { ColumnQuantifiers, TableAttribute, TableEntity } from "./types/sql-plugin-types";
+import { TableAttribute, TableEntity } from "./types/sql-plugin-types";
 import { DatabaseModel, ForeignKeyModel, PrimaryKeyModel, PropertyModel, TableModel } from "@funktechno/sqlsimpleparser/lib/types";
 import { JSONSchema4, JSONSchema4TypeName } from "json-schema";
 import { convertCoreTypesToJsonSchema, convertOpenApiToCoreTypes, jsonSchemaDocumentToOpenApi } from "core-types-json-schema";
 import { JsonSchemaDocumentToOpenApiOptions, PartialOpenApiSchema } from "openapi-json-schema";
-import { convertTypeScriptToCoreTypes } from "core-types-ts/dist/lib/ts-to-core-types";
-import { convertCoreTypesToTypeScript } from "core-types-ts";
+import { GetColumnQuantifiers, RemoveNameQuantifiers, dbTypeEnds, getDbLabel, getMermaidDiagramDb } from "./utils/sharedUtils";
+import { pluginVersion } from "./utils/constants";
 
 declare const window: Customwindow;
 
@@ -14,8 +14,6 @@ declare const window: Customwindow;
  * Version: <VERSION>
  */
 Draw.loadPlugin(function(ui) {
-    // export sql methods
-    const pluginVersion = "<VERSION>";
 
     //Create Base div
     const divGenSQL = document.createElement("div");
@@ -48,265 +46,15 @@ Draw.loadPlugin(function(ui) {
     wndGenSQL.setResizable(false);
     wndGenSQL.setClosable(true);
 
-    /**
-     * return text quantifiers for dialect
-     * @returns json
-     */
-    function GetColumnQuantifiers(): ColumnQuantifiers {
-        const chars = {
-            Start: "`",
-            End: "`",
-        };
-        return chars;
-    }
-    /**
-     * sometimes rows have spans or styles, an attempt to remove them
-     * @param {*} label 
-     * @returns 
-     */
-    function removeHtml(label: string){
-        const tempDiv = document.createElement("div");
-        tempDiv.innerHTML = label;
-        const text = tempDiv.textContent || tempDiv.innerText || "";
-        tempDiv.remove();
-        return text;
-    }
-    /**
-     * extract row column attributes
-     * @param {*} label 
-     * @param {*} columnQuantifiers 
-     * @returns 
-     */
-    function getDbLabel(label: string, columnQuantifiers: ColumnQuantifiers): TableAttribute{
-        let result = removeHtml(label);
-        // fix duplicate spaces and different space chars
-        result = result.toString().replace(/\s+/g, " ");
-        const firstSpaceIndex = result[0] == columnQuantifiers.Start &&
-            result.indexOf(columnQuantifiers.End + " ") !== -1
-            ? result.indexOf(columnQuantifiers.End + " ")
-            : result.indexOf(" ");
-        const attributeType = result.substring(firstSpaceIndex + 1).trim();
-        const attributeName = RemoveNameQuantifiers(result.substring(0, firstSpaceIndex + 1));
-        const attribute = {
-            attributeName,
-            attributeType
-        };
-        return attribute;
-    }
-    function RemoveNameQuantifiers(name: string) {
-        return name.replace(/\[|\]|\(|\"|\'|\`/g, "").trim();
-    }
-
-    function getMermaidDiagramDb(): DbDefinition{
-        const model = ui.editor.graph.getModel();
-        // same models from mermaid for diagram relationships
-        // only difference is entities is an array rather than object to allow duplicate tables
-        const entities: Record<string,TableEntity> = {};
-        const relationships: DbRelationshipDefinition[] = [];
-        // build models
-        for (const key in model.cells) {
-            if (Object.hasOwnProperty.call(model.cells, key)) {
-                const mxcell = model.cells[key];
-                if(mxcell.mxObjectId.indexOf("mxCell") !== -1) {
-                    if(mxcell.style && mxcell.style.trim().startsWith("swimlane;")){
-                        const entity: TableEntity = {
-                            name: RemoveNameQuantifiers(mxcell.value),
-                            attributes: [] as TableAttribute[],
-                        };
-                        for (let c = 0; c < mxcell.children.length; c++) {
-                            const col = mxcell.children[c];
-                            if(col.mxObjectId.indexOf("mxCell") !== -1) {
-                                if(col.style && col.style.trim().startsWith("shape=partialRectangle")){
-                                    const columnQuantifiers = GetColumnQuantifiers();
-                                    //Get delimiter of column name
-                                    //Get full name
-                                    const attribute = getDbLabel(col.value, columnQuantifiers);
-                                    const attributeKeyType = col.children.find(x=> ["FK","PK"].findIndex(k => k== x.value.toUpperCase()) !== -1 ||
-                                        x.value.toUpperCase().indexOf("PK,")!=-1);
-                                    if(attributeKeyType){
-                                        attribute.attributeKeyType = attributeKeyType.value;
-                                        if(attribute.attributeKeyType != "PK" && attribute.attributeKeyType.indexOf("PK") != -1){
-                                            attribute.attributeKeyType = "PK";
-                                        }
-                                    }
-                                    entity.attributes.push(attribute);
-                                    if(col.edges && col.edges.length){
-                                        // check for edges foreign keys
-                                        for (let e = 0; e < col.edges.length; e++) {
-                                            const edge = col.edges[e];
-                                            if(edge.mxObjectId.indexOf("mxCell") !== -1) {
-                                                if(edge.style && edge.style.indexOf("endArrow=") != -1 && edge.source && 
-                                                    edge.source.value && edge.target && edge.target.value){
-                                                        // need to check if end is open or certain value to determin relationship type
-                                                        // extract endArrow txt
-                                                        // check if both match and contain many or open
-                                                        // if both match and are many then create a new table
-                                                        const endCheck = "endArrow=";
-                                                        const endArr = edge.style.indexOf(endCheck) != -1 ?
-                                                        edge.style.substring(edge.style.indexOf(endCheck) + endCheck.length, edge.style.substring(edge.style.indexOf(endCheck) + endCheck.length).indexOf(";") + edge.style.indexOf(endCheck) + endCheck.length)
-                                                        : "";
-                                                        const startCheck = "startArrow=";
-                                                        const startArr = edge.style.indexOf(startCheck) != -1 ?
-                                                        edge.style.substring(edge.style.indexOf(startCheck) + startCheck.length, edge.style.substring(edge.style.indexOf(startCheck) + startCheck.length).indexOf(";") + edge.style.indexOf(startCheck) + startCheck.length)
-                                                        : "";
-
-                                                        const manyCheck = ["open","many"];
-                                                        const sourceIsPrimary = endArr && manyCheck
-                                                        .findIndex(x => endArr.toLocaleLowerCase().indexOf(x)!=-1) != -1;
-                                                        const targetIsPrimary = startArr && manyCheck
-                                                            .findIndex(x => startArr.toLocaleLowerCase().indexOf(x)!=-1) != -1;
-                                                        // has to be one to many and not one to one
-                                                        if((targetIsPrimary || sourceIsPrimary) &&
-                                                            !(targetIsPrimary && sourceIsPrimary)
-                                                        ){
-                                                            let sourceId = edge.source.value;
-                                                            const sourceAttr = getDbLabel(sourceId, columnQuantifiers);
-                                                            sourceId = sourceAttr.attributeName;
-                                                            const sourceEntity = RemoveNameQuantifiers(edge.source.parent.value);
-                                                            let targetId = edge.target.value;
-                                                            const targetAttr = getDbLabel(targetId, columnQuantifiers);
-                                                            targetId = targetAttr.attributeName;
-                                                            const targetEntity = RemoveNameQuantifiers(edge.target.parent.value);
-                                                            // entityA primary
-                                                            // entityB foreign
-                                                            const relationship: DbRelationshipDefinition = {
-                                                                entityA: sourceIsPrimary ? sourceEntity : targetEntity,
-                                                                entityB: sourceIsPrimary ? targetEntity : sourceEntity,
-                                                                // based off of styles?
-                                                                relSpec: {
-                                                                    cardA: "ZERO_OR_MORE",
-                                                                    cardB: "ONLY_ONE",
-                                                                    relType: "IDENTIFYING"
-                                                                },
-                                                                roleA: sourceIsPrimary ? 
-                                                                    `[${sourceEntity}.${sourceId}] to [${targetEntity}.${targetId}]` : 
-                                                                    `[${targetEntity}.${targetId}] to [${sourceEntity}.${sourceId}]`
-                                                            };
-                                                            // check that is doesn't already exist
-                                                            const exists = relationships.findIndex(r => r.entityA == relationship.entityA && r.entityB == relationship.entityB && r.roleA == relationship.roleA);
-                                                            if(exists ==-1){
-                                                                relationships.push(relationship);
-                                                            }
-                                                        } else if(targetIsPrimary && sourceIsPrimary){
-                                                            // add a new many to many table
-                                                            let sourceId = edge.source.value;
-                                                            const sourceAttr = getDbLabel(sourceId, columnQuantifiers);
-                                                            sourceAttr.attributeKeyType = "PK";
-                                                            sourceId = sourceAttr.attributeName;
-                                                            const sourceEntity = RemoveNameQuantifiers(edge.source.parent.value);
-                                                            let targetId = edge.target.value;
-                                                            const targetAttr = getDbLabel(targetId, columnQuantifiers);
-                                                            targetAttr.attributeKeyType = "PK";
-                                                            targetId = targetAttr.attributeName;
-                                                            const targetEntity = RemoveNameQuantifiers(edge.target.parent.value);
-                                                            const compositeEntity = {
-                                                                name: RemoveNameQuantifiers(sourceEntity) + "_" + RemoveNameQuantifiers(targetEntity),
-                                                                attributes: [sourceAttr, targetAttr]
-                                                            };
-                                                            // add composite entity
-                                                            if(entities[compositeEntity.name]){
-                                                                // DON'T add duplicate composite tables
-                                                            } else {
-                                                                entities[compositeEntity.name] = compositeEntity;
-                                                            }
-                                                            // entityA primary
-                                                            // entityB foreign
-                                                            const relationship = {
-                                                                entityA: sourceEntity,
-                                                                entityB: compositeEntity.name,
-                                                                // based off of styles?
-                                                                relSpec: {
-                                                                    cardA: "ZERO_OR_MORE",
-                                                                    cardB: "ONLY_ONE",
-                                                                    relType: "IDENTIFYING"
-                                                                },
-                                                                roleA: `[${sourceEntity}.${sourceId}] to [${compositeEntity.name}.${sourceId}]`
-                                                            };
-                                                            // check that is doesn't already exist
-                                                            let exists = relationships.findIndex(r => r.entityA == relationship.entityA && r.entityB == relationship.entityB && r.roleA == relationship.roleA);
-                                                            if(exists ==-1){
-                                                                relationships.push(relationship);
-                                                            }
-                                                            const relationship2 = {
-                                                                entityA: targetEntity,
-                                                                entityB: compositeEntity.name,
-                                                                // based off of styles?
-                                                                relSpec: {
-                                                                    cardA: "ZERO_OR_MORE",
-                                                                    cardB: "ONLY_ONE",
-                                                                    relType: "IDENTIFYING"
-                                                                },
-                                                                roleA: `[${targetEntity}.${targetId}] to [${compositeEntity.name}.${targetId}]`
-                                                            };
-                                                            // check that is doesn't already exist
-                                                            exists = relationships.findIndex(r => r.entityA == relationship2.entityA && r.entityB == relationship2.entityB && r.roleA == relationship2.roleA);
-                                                            if(exists ==-1){
-                                                                relationships.push(relationship2);
-                                                            }
-                                                        }
-
-                                                }
-                                            }
-                                            
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                        // allows for duplicates if another table has the same name
-                        if(entities[entity.name]){
-                            let count = 2;
-                            while(entities[entity.name + count.toString()]){
-                                count++;
-                            }
-                            entities[entity.name + count.toString()] = entity;
-                        } else {
-                            entities[entity.name] = entity;
-                        }
-                    }
-
-                }
-            }
-        }
-
-        class DatabaseModel{
-            constructor(entities: Record<string, TableEntity>, relationships: DbRelationshipDefinition[]){
-                this.entities = entities;
-                this.relationships = relationships;
-            }
-            
-            private entities: Record<string, TableEntity>;
-            
-            private relationships: DbRelationshipDefinition[];
-
-            getEntities(){
-                return this.entities;
-            }
-
-            getRelationships(){
-                return this.relationships;
-            }
-        }
-
-        const db = new DatabaseModel(entities, relationships) as unknown as DbDefinition;
-
-        return db;
-    }
-
     function generateNoSql(type: "ts" | "openapi" | undefined) {
         // get diagram model
-        const db = getMermaidDiagramDb();
+        const db = getMermaidDiagramDb(ui, type);
         const openapi = dbToOpenApi(db);
         let result = "";
-        if(type == "ts"){
-            
-            const { data: doc } = convertOpenApiToCoreTypes( openapi );
-            const { data: sourceCode } = convertCoreTypesToTypeScript( doc );
-            result = `/*\n\tGenerated in drawio\n\tDatabase: ${type}\n\tPlugin: nosql\n\tVersion: ${pluginVersion}\n*/\n\n` + result;
-            result += sourceCode;
-        
-        } else if(type == "openapi"){
+        if(type == "openapi"){
            result = JSON.stringify(openapi, null, 2);
+        } else {
+            throw new Error(`type:${type} is not supported`);
         }
         sqlInputGenSQL.value = result;
     };
@@ -374,15 +122,7 @@ Draw.loadPlugin(function(ui) {
     resetBtnGenSQL.style.padding = "4px";
     divGenSQL.appendChild(resetBtnGenSQL);
 
-    let btnGenSQL_ts = mxUtils.button("TS", function() {
-        generateNoSql("ts");
-    });
-
-    btnGenSQL_ts.style.marginTop = "8px";
-    btnGenSQL_ts.style.padding = "4px";
-    divGenSQL.appendChild(btnGenSQL_ts);
-
-    btnGenSQL_ts = mxUtils.button("OpenAPI", function() {
+    const btnGenSQL_ts = mxUtils.button("OpenAPI", function() {
         generateNoSql("openapi");
     });
 
@@ -424,31 +164,13 @@ Draw.loadPlugin(function(ui) {
     const sqlInputFromNOSQL = document.createElement("textarea");
     sqlInputFromNOSQL.style.height = "200px";
     sqlInputFromNOSQL.style.width = "100%";
-    const defaultReset = `/*\n\tDrawio default value\n\tPlugin: nosql\n\tVersion: ${pluginVersion}\n*/\n\n
-export interface WeatherForecast {
-  /** @format date-time */
-  date?: string;
-  /** @format int32 */
-  temperatureC?: number;
-  /** @format int32 */
-  temperatureF?: number;
-  summary?: string | null;
-  nestedProp: string[];
-  children?: Child[];
-}
-
-export interface Child {
-  name: string
-}
-    `;
-
 
     const defaultResetOpenApi = `
 {
   "openapi": "3.0.0",
   "info": {
     "title": "nosql plugin sample",
-    "version": ${pluginVersion},
+    "version": "${pluginVersion}",
     "x-comment": "Generated by core-types-json-schema (https://github.com/grantila/core-types-json-schema)"
   },
   "paths": {},
@@ -515,7 +237,7 @@ export interface Child {
 }
     `;
 
-    sqlInputFromNOSQL.value = defaultReset;
+    sqlInputFromNOSQL.value = defaultResetOpenApi;
     mxUtils.br(divFromNOSQL);
     divFromNOSQL.appendChild(sqlInputFromNOSQL);
 
@@ -580,11 +302,8 @@ export interface Child {
                 const { data: doc } = convertOpenApiToCoreTypes( data );
                 const { data: jsonSchema } = convertCoreTypesToJsonSchema( doc );
                 openApi = jsonSchemaDocumentToOpenApi( jsonSchema, openApiOptions );
-            } else if(type == "ts"){
-                // serialize typescript classes to openapi spec
-                const { data: doc } = convertTypeScriptToCoreTypes( text );
-                const { data: jsonSchema } = convertCoreTypesToJsonSchema( doc );
-                openApi = jsonSchemaDocumentToOpenApi( jsonSchema, openApiOptions );
+            } else {
+                throw new Error(`type:${type} is not supported`);
             }
             const schemas  = openApi?.components?.schemas;
             if(schemas){
@@ -667,7 +386,7 @@ export interface Child {
                 primaryKeyList = models.PrimaryKeyList;
                 tableList = models.TableList;
                 exportedTables = tableList.length;
-                CreateTableUI();
+                CreateTableUI(type);
             }
          
         } catch (error) {
@@ -676,7 +395,7 @@ export interface Child {
         }
     };
 
-    function CreateTableUI() {
+    function CreateTableUI(type: "ts" | "openapi" | undefined) {
         tableList.forEach(function(tableModel) {
             //Define table size width
             const maxNameLenght = 100 + tableModel.Name.length;
@@ -721,7 +440,7 @@ export interface Child {
             graph.setSelectionCells(graph.importCells(cells, x, y));
             // add foreign key edges
             const model = graph.getModel();
-            const columnQuantifiers = GetColumnQuantifiers();
+            const columnQuantifiers = GetColumnQuantifiers(type);
             // const pt = graph.getFreeInsertPoint();
             foreignKeyList.forEach(function(fk){
                 if(fk.IsDestination && fk.PrimaryKeyName && fk.ReferencesPropertyName && 
@@ -785,15 +504,6 @@ export interface Child {
 
     mxUtils.br(divFromNOSQL);
 
-    const resetBtnFromNOSQL = mxUtils.button(mxResources.get("Reset TS"), function() {
-        sqlInputFromNOSQL.value = defaultReset;
-    });
-
-    resetBtnFromNOSQL.style.marginTop = "8px";
-    resetBtnFromNOSQL.style.marginRight = "4px";
-    resetBtnFromNOSQL.style.padding = "4px";
-    divFromNOSQL.appendChild(resetBtnFromNOSQL);
-
     const resetOpenAPIBtnFromNOSQL = mxUtils.button("Reset OpenAPI", function() {
         sqlInputFromNOSQL.value = defaultResetOpenApi;
     });
@@ -802,14 +512,6 @@ export interface Child {
     resetOpenAPIBtnFromNOSQL.style.marginRight = "4px";
     resetOpenAPIBtnFromNOSQL.style.padding = "4px";
     divFromNOSQL.appendChild(resetOpenAPIBtnFromNOSQL);
-
-    const btnFromNOSQL_ts = mxUtils.button("Insert TS", function() {
-        parseFromInput(sqlInputFromNOSQL.value, "ts");
-    });
-
-    btnFromNOSQL_ts.style.marginTop = "8px";
-    btnFromNOSQL_ts.style.padding = "4px";
-    divFromNOSQL.appendChild(btnFromNOSQL_ts);
 
     const btnFromNOSQL_OpenAPI = mxUtils.button("Insert OpenAPI", function() {
         parseFromInput(sqlInputFromNOSQL.value, "openapi");
@@ -875,14 +577,5 @@ function GeneratePropertyModel(tableName: string, propertyName: string, property
         ForeignKey: [],
     };
     return result;
-}
-function dbTypeEnds(label: string): string {
-    const char1 = "`";
-    const char2 = "`";
-    // if (type == "mysql") {
-    //   char1 = "`";
-    //   char2 = "`";
-    // } 
-    return `${char1}${label}${char2}`;
 }
 
