@@ -6,8 +6,11 @@
 * see https://github.com/ariel-bentu/tam-drawio for multiple install options
 * download plugin file
     * [sql.js](https://raw.githubusercontent.com/funktechno/sqltooling-drawio/main/dist/sql.js) - import/export SQL DLLS
-    * [nosql.js](https://raw.githubusercontent.com/funktechno/sqltooling-drawio/main/dist/nosql.js) - import/export typescript interfaces and openapi jsons (NOT vscode compatible)
+    * [nosql.js](https://raw.githubusercontent.com/funktechno/sqltooling-drawio/main/dist/nosql.js) - import/export openapi jsons
       * or [nosql.min.js](https://raw.githubusercontent.com/funktechno/sqltooling-drawio/main/dist/nosql.min.js)
+      * you can then use the openapi.json spec to generate classes/interfaces in the language of your choosing
+    * [nosql-ts.js](https://raw.githubusercontent.com/funktechno/sqltooling-drawio/main/dist/nosql-ts.js) - import/export typescript interfaces and openapi jsons (NOT vscode compatible)
+      * or [nosql-ts.min.js](https://raw.githubusercontent.com/funktechno/sqltooling-drawio/main/dist/nosql-ts.min.js)
     * or clone project `git clone --branch main git@github.com:funktechno/sqltooling-drawio.git` and check `dist folder`
 * vscode [Draw.io Integration](https://marketplace.visualstudio.com/items?itemName=hediet.vscode-drawio)
     * settings.json
@@ -15,6 +18,9 @@
     "hediet.vscode-drawio.plugins": [
     {
       "file": "xxx\\sqltooling-drawio\\dist\\sql.js"
+    },
+    {
+      "file": "xxx\\sqltooling-drawio\\dist\\nosql.js"
     },
     ```
 
