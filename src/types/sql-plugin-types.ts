@@ -1,3 +1,4 @@
+import { DbRelationshipDefinition } from "@funktechno/little-mermaid-2-the-sql/lib/src/types";
 
 export interface ColumnQuantifiers {
     Start: string;
@@ -14,4 +15,9 @@ export interface TableAttribute {
     attributeName: string;
     attributeKeyType?: string;
     // "PK" | "FK"
+}
+
+export interface DatabaseModelResult {
+    getEntities: () => Record<string, TableEntity>;
+    getRelationships: () => DbRelationshipDefinition[];
 }
