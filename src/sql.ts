@@ -185,8 +185,6 @@ Draw.loadPlugin(function(ui) {
             tableCell.geometry.height += 26;
         }
 
-        rowCell = rowCell;
-
     };
 
     function parseSql(text: string, type?: "mysql" | "sqlite" | "postgres" | "sqlserver" | undefined) {
