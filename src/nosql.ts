@@ -281,8 +281,6 @@ Draw.loadPlugin(function(ui) {
             tableCell.geometry.height += 26;
         }
 
-        rowCell = rowCell;
-
     };
 
     function parseFromInput(text: string, type?: "ts" | "openapi" | undefined) {

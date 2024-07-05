@@ -314,8 +314,6 @@ export interface Child {
             tableCell.geometry.height += 26;
         }
 
-        rowCell = rowCell;
-
     };
 
     function parseFromInput(text: string, type?: "ts" | "openapi" | undefined) {
