@@ -50,7 +50,7 @@ Draw.loadPlugin(function(ui) {
         // get diagram model
         const db = getMermaidDiagramDb(ui, type);
         // load parser
-        const parser = new DbParser(type as string, db);
+        const parser = new DbParser(type as string, db as unknown as DbDefinition);
         // generate sql
         let sql = parser.getSQLDataDefinition();
         sql = `/*\n\tGenerated in drawio\n\tDatabase: ${type}\n\tPlugin: sql\n\tVersion: ${pluginVersion}\n*/\n\n` + sql;

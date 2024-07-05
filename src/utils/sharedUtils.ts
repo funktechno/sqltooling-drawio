@@ -1,5 +1,5 @@
 import { DbDefinition, DbRelationshipDefinition } from "@funktechno/little-mermaid-2-the-sql/lib/src/types";
-import { ColumnQuantifiers, TableAttribute, TableEntity } from "../types/sql-plugin-types";
+import { ColumnQuantifiers, DatabaseModelResult, TableAttribute, TableEntity } from "../types/sql-plugin-types";
 
 /**
  * return text quantifiers for dialect
@@ -92,7 +92,7 @@ export function getDbLabel(
  * @param type 
  * @returns 
  */
-export function getMermaidDiagramDb(ui: DrawioUI, type: "mysql" | "sqlserver" | "sqlite" | "postgres" | "ts" | "openapi" | undefined): DbDefinition{
+export function getMermaidDiagramDb(ui: DrawioUI, type: "mysql" | "sqlserver" | "sqlite" | "postgres" | "ts" | "openapi" | undefined): DatabaseModelResult{
     const model = ui.editor.graph.getModel();
     // same models from mermaid for diagram relationships
     // only difference is entities is an array rather than object to allow duplicate tables
@@ -264,6 +264,12 @@ export function getMermaidDiagramDb(ui: DrawioUI, type: "mysql" | "sqlserver" | 
         }
     }
 
+    const db = GenerateDatabaseModel(entities, relationships);
+
+    return db;
+}
+
+export function GenerateDatabaseModel(entities: Record<string, TableEntity>, relationships: DbRelationshipDefinition[]) {
     class DatabaseModel{
         constructor(entities: Record<string, TableEntity>, relationships: DbRelationshipDefinition[]){
             this.entities = entities;
@@ -283,7 +289,7 @@ export function getMermaidDiagramDb(ui: DrawioUI, type: "mysql" | "sqlserver" | 
         }
     }
 
-    const db = new DatabaseModel(entities, relationships) as unknown as DbDefinition;
+    const db:DatabaseModelResult = new DatabaseModel(entities, relationships);
 
     return db;
 }
