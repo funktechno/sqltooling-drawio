@@ -1,5 +1,5 @@
 import { ColumnQuantifiers } from "@funktechno/sqlsimpleparser/lib/types";
-import { GetColumnQuantifiers, dbTypeEnds } from "../../src/utils/sharedUtils";
+import { GetColumnQuantifiers, dbTypeEnds, removeHtml } from "../../src/utils/sharedUtils";
 import { multiAssert } from "../helpers";
 
 describe("sharedUtils.ts", () => {
@@ -43,4 +43,10 @@ describe("sharedUtils.ts", () => {
 
     multiAssert(testTheory);
   });
+  it("removeHtml", () => {
+    const expectedResult = "text only";
+    const testData = `<span>${expectedResult}</span>`;
+    expect(removeHtml(testData)).toBe("text only");
+     
+  })
 });
