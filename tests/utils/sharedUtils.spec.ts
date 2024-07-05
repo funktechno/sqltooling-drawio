@@ -1,6 +1,7 @@
 import { ColumnQuantifiers } from "@funktechno/sqlsimpleparser/lib/types";
-import { GetColumnQuantifiers, dbTypeEnds, removeHtml } from "../../src/utils/sharedUtils";
+import { GetColumnQuantifiers, dbTypeEnds, getDbLabel, removeHtml } from "../../src/utils/sharedUtils";
 import { multiAssert } from "../helpers";
+import { TableAttribute } from "../../src/types/sql-plugin-types";
 
 describe("sharedUtils.ts", () => {
   it("dbTypeEnds", () => {
@@ -48,5 +49,12 @@ describe("sharedUtils.ts", () => {
     const testData = `<span>${expectedResult}</span>`;
     expect(removeHtml(testData)).toBe("text only");
      
+  })
+  it("getDbLabel", () => {
+    const columnQuantifiers = GetColumnQuantifiers("mysql");
+    const rowValue = "`LastName` varchar(255)"
+    const result = getDbLabel(rowValue, columnQuantifiers);
+    const expectedResult:TableAttribute = { attributeName: "LastName", attributeType: "varchar(255)" }
+    expect(result).toEqual(expectedResult);
   })
 });
