@@ -82,7 +82,7 @@
     "ts-jest": "^29.0.1",
     "ts-node": "^10.9.1",
     "tsify": "^5.0.4",
-    "typeconv": "^1.8.0",
+    "typeconv": "^2.3.1",
     "typescript": "^5.0.2",
     "typescript-eslint": "^8.0.0-alpha.39",
     "vinyl-buffer": "^1.0.1",
