@@ -1,8 +1,21 @@
 import { DbDefinition } from "@funktechno/little-mermaid-2-the-sql/lib/src/types";
-import { PartialOpenApiSchema } from "openapi-json-schema";
-import { pluginVersion } from "./constants";
+import {
+  OpenApiSchemaTypeDefinition,
+  PartialOpenApiSchema,
+} from "openapi-json-schema";
+import { commentColumnQuantifiers, enumKeyword, formatKeyword, pluginVersion, validEnumTypes } from "./constants";
 import { JSONSchema4, JSONSchema4TypeName } from "json-schema";
-import { DatabaseModelResult } from "../types/sql-plugin-types";
+import {
+  ColumnQuantifiers,
+  DatabaseModelResult,
+} from "../types/sql-plugin-types";
+import { dbTypeEnds, generateComment, getCommentIndexes, getDbLabel } from "./sharedUtils";
+import {
+  DatabaseModel,
+  ForeignKeyModel,
+  PropertyModel,
+  TableModel,
+} from "@funktechno/sqlsimpleparser/lib/types";
 
 /**
  * convert db to openapi
@@ -27,32 +40,281 @@ export function dbToOpenApi(db: DatabaseModelResult): PartialOpenApiSchema {
   const entities = db.getEntities();
   for (const key in entities) {
     if (Object.prototype.hasOwnProperty.call(entities, key)) {
+      let schemaKey = key;
       const entity = entities[key];
-      if (schema[key]) {
+      let commentIndexes = getCommentIndexes(key);
+      let description = "";
+      let formatValue = "";
+      if(commentIndexes.start > -1 && commentIndexes.end > -1) {
+        
+          let result = schemaKey.toString().trim();
+          commentIndexes = getCommentIndexes(result);
+          const firstSpaceIndex = commentIndexes.start;
+          const lastSpaceIndex= commentIndexes.end;
+          schemaKey = result.substring(0, commentIndexes.beforeStart);
+          result = result.substring(firstSpaceIndex, lastSpaceIndex).trim();
+          if (result.indexOf(formatKeyword) !== -1) {
+          const formatIndex = result.indexOf(formatKeyword);
+          formatValue = result.substring(
+              formatIndex + formatKeyword.length
+          ).trim();
+          result = result.substring(0, formatIndex);
+          }
+          if (result) {
+            description = result;
+          }
+      }
+      if (schema[schemaKey]) {
         continue;
       }
-      schema[key] = {
+      schema[schemaKey] = {
         type: "object",
-        title: key,
+        title: schemaKey,
         additionalProperties: false,
         properties: {},
       };
+      if(description) {
+        schema[schemaKey].description = description.trim();
+      }
+      if(formatValue) {
+        schema[schemaKey].format = formatValue.trim();
+      }
       for (let p = 0; p < entity.attributes.length; p++) {
         const attribute = entity.attributes[p];
-        const propName = attribute.attributeName;
-        if (!propName || schema[key].properties[propName]) {
+        const propName = attribute.attributeName.trim();
+        if (!propName || schema[schemaKey].properties[propName]) {
           continue;
         }
-        const attType = attribute.attributeType?.split(" ") ?? [];
-        const property: JSONSchema4 = {
-          title: `${key}.${propName}`,
-          nullable: attribute.attributeType?.includes("nullable") ?? false,
-          type: (attType[0] ?? "string") as JSONSchema4TypeName,
-        };
-        schema[key].properties[attribute.attributeName!] = property;
+        // TODO: trim double spaces
+        const attType = attribute.attributeType?.trim().split(" ") ?? [];
+        // check if enum
+        let isEnum = false;
+        let type = (attType[0] ?? "string") as JSONSchema4TypeName;
+        if (propName.indexOf(enumKeyword) !== -1) {
+          const splitPropName = propName.split(" ");
+          if (
+            splitPropName.length == 2 &&
+            validEnumTypes.indexOf(splitPropName[0]) !== -1 &&
+            splitPropName[1] == enumKeyword
+          ) {
+            isEnum = true;
+            type = splitPropName[0] as JSONSchema4TypeName;
+          }
+        }
+        // extract desciption /** asdf */
+        let description = "";
+        let formatValue = "";
+        let enumValues: any[] | null = null;
+        if (
+          attribute.attributeType?.includes(commentColumnQuantifiers.Start) &&
+          attribute.attributeType?.includes(commentColumnQuantifiers.End)
+        ) {
+          let result = attribute.attributeType;
+          const commentIndexes = getCommentIndexes(result);
+          const firstSpaceIndex = commentIndexes.start;
+          const lastSpaceIndex= commentIndexes.end;
+          const enumRaw = result.substring(0, commentIndexes.beforeStart).trim();
+          if (enumRaw) {
+            try {
+              enumValues = JSON.parse(enumRaw);
+            } catch (error) {
+              console.log(
+                `Error parsing raw enum values: ${enumRaw} Message: ${JSON.stringify(
+                  error
+                )}`
+              );
+            }
+          }
+          result = result.substring(firstSpaceIndex, lastSpaceIndex);
+          if (result.indexOf(formatKeyword) !== -1) {
+            const formatIndex = result.indexOf(formatKeyword);
+            formatValue = result
+              .substring(formatIndex + formatKeyword.length)
+              .trim();
+            result = result.substring(0, formatIndex);
+          }
+          if (result) {
+            description = result;
+          }
+
+          // decription = attribute.attributeType?.replace("/**", "").replace("*/", "");
+        }
+        if (isEnum) {
+          if (schema[schemaKey].enum) continue;
+          if (enumValues) {
+            schema[schemaKey].enum = enumValues;
+          }
+          if (description) {
+            schema[schemaKey].description = description.trim();
+          }
+          if (formatValue) {
+            schema[schemaKey].format = formatValue.trim();
+          }
+          schema[schemaKey].type = type;
+        } else {
+          const property: JSONSchema4 = {
+            title: `${key}.${propName}`,
+            nullable: attribute.attributeType?.includes("nullable") ?? false,
+            type: type,
+          };
+          if (description) {
+            property.description = description.trim();
+          }
+          if (formatValue) {
+            property.format = formatValue.trim();
+          }
+          schema[schemaKey].properties[attribute.attributeName!] = property;
+        }
+      }
+      if (Object.keys(schema[schemaKey].properties).length === 0) {
+        delete schema[schemaKey].properties;
       }
     }
   }
   result.components!.schemas = schema;
   return result;
+}
+
+// TODO: may need to make recursive for when schema property items is array
+export function GeneratePropertyModel(
+  tableName: string,
+  propertyName: string,
+  property: JSONSchema4
+): PropertyModel {
+  let columnProperties = (property.type ?? "object").toString();
+  if (property.enum) {
+    columnProperties = `${JSON.stringify(property.enum)}`;
+  } else if (property.nullable) {
+    columnProperties += " nullable";
+  }
+  const description = generateComment(property.description, property.format);
+  if (description) {
+    columnProperties += ` ${description}`;
+  }
+  const result: PropertyModel = {
+    Name: dbTypeEnds(propertyName),
+    IsPrimaryKey: false,
+    IsForeignKey: false,
+    ColumnProperties: columnProperties,
+    TableName: dbTypeEnds(tableName),
+    ForeignKey: [],
+  };
+  return result;
+}
+
+export function ConvertOpenApiToDatabaseModel(
+  schemas: Record<string, OpenApiSchemaTypeDefinition>
+): DatabaseModel {
+  const models: DatabaseModel = {
+    Dialect: "nosql",
+    TableList: [],
+    PrimaryKeyList: [],
+    ForeignKeyList: [],
+  };
+  for (const key in schemas) {
+    if (Object.prototype.hasOwnProperty.call(schemas, key)) {
+      const schema = schemas[key] as JSONSchema4;
+      const tableModel: TableModel = {
+        Name: dbTypeEnds(key),
+        Properties: [],
+      };
+      if (schema.enum) {
+        const enumList = schema.enum;
+        // serialize to string enum [values]
+        const propertyKey = `${schema.type} enum`;
+        const property: JSONSchema4 = {
+          enum: enumList,
+        };
+        if (schema.description) {
+          property.description = schema.description;
+        }
+        if (schema.format) {
+          property.format = schema.format;
+        }
+        const propertyModel: PropertyModel = GeneratePropertyModel(
+          key,
+          propertyKey,
+          property
+        );
+        tableModel.Properties.push(propertyModel);
+      } else {
+        const comment = generateComment(schema.description, schema.format);
+        if (comment) {
+          tableModel.Name += ` ${comment}`;
+        }
+      }
+      // schema level comments? should these be in a row or table name?
+      for (const propertyKey in schema.properties) {
+        if (
+          Object.prototype.hasOwnProperty.call(schema.properties, propertyKey)
+        ) {
+          const property = schema.properties[propertyKey];
+          const propertyModel: PropertyModel = GeneratePropertyModel(
+            key,
+            propertyKey,
+            property
+          );
+          if (
+            propertyModel.ColumnProperties.includes("object") ||
+            propertyModel.ColumnProperties.includes("array")
+          ) {
+            let refName: string | null | undefined = null;
+            if (property.$ref) {
+              refName = property.$ref.split("/").pop();
+            } else if (property.items && typeof property.items == "object") {
+              refName = (property.items as JSONSchema4).$ref?.split("/").pop();
+            }
+            if (refName) {
+              const primaryKeyModel: ForeignKeyModel = {
+                PrimaryKeyTableName: dbTypeEnds(key),
+                ReferencesTableName: dbTypeEnds(refName),
+                PrimaryKeyName: dbTypeEnds(propertyKey),
+                // should just point to first property in uml table
+                ReferencesPropertyName: "",
+                IsDestination: false,
+              };
+              const foreignKeyModel: ForeignKeyModel = {
+                ReferencesTableName: dbTypeEnds(key),
+                PrimaryKeyTableName: dbTypeEnds(refName),
+                ReferencesPropertyName: dbTypeEnds(propertyKey),
+                // should just point to first property in uml table
+                PrimaryKeyName: "",
+                IsDestination: true,
+              };
+              models.ForeignKeyList.push(foreignKeyModel);
+              models.ForeignKeyList.push(primaryKeyModel);
+              propertyModel.IsForeignKey = true;
+            }
+          }
+
+          tableModel.Properties.push(propertyModel);
+        }
+      }
+
+      models.TableList.push(tableModel);
+    }
+  }
+  for (let i = 0; i < models.ForeignKeyList.length; i++) {
+    const fk = models.ForeignKeyList[i];
+    if (!fk.ReferencesPropertyName) {
+      // match to first entry
+      const property = models.TableList.find(
+        (t) => t.Name == fk.ReferencesTableName
+      )?.Properties[0];
+      if (property) {
+        models.ForeignKeyList[i].ReferencesPropertyName = property.Name;
+      }
+    }
+    if (!fk.PrimaryKeyName) {
+      // match to first entry
+      const property = models.TableList.find(
+        (t) => t.Name == fk.PrimaryKeyTableName
+      )?.Properties[0];
+      if (property) {
+        models.ForeignKeyList[i].PrimaryKeyName = property.Name;
+      }
+    }
+  }
+
+  return models;
 }
