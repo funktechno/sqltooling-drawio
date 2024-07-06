@@ -142,7 +142,10 @@ export function dbToOpenApi(db: DatabaseModelResult): PartialOpenApiSchema {
               );
             }
           }
-          attributeTypeResult = attributeTypeResult.substring(firstSpaceIndex, lastSpaceIndex);
+          attributeTypeResult = attributeTypeResult.substring(
+            firstSpaceIndex,
+            lastSpaceIndex
+          );
           if (attributeTypeResult.indexOf(formatKeyword) !== -1) {
             const formatIndex = attributeTypeResult.indexOf(formatKeyword);
             formatValue = attributeTypeResult
@@ -188,32 +191,37 @@ export function dbToOpenApi(db: DatabaseModelResult): PartialOpenApiSchema {
             if (validJSONSchemaTypes.indexOf(type) != -1) {
               //
             } else {
-              // else {
               removeType = true;
               $ref = `#/components/schemas/${RemoveNameQuantifiers(type)}`;
             }
           }
-          if(["array", "object"].indexOf(type) !== -1) {
-            const relationships = db.getRelationships().filter(x=> x.entityA == key);
+          if (["array", "object"].indexOf(type) !== -1) {
+            const relationships = db
+              .getRelationships()
+              .filter((x) => x.entityA == key);
             const roleLookup = `[${key}.${propName}]`;
             // FIND MATCH
-            const rel = relationships.find(x => x.roleA.indexOf(roleLookup) != -1);
-            if(rel) {
+            const rel = relationships.find(
+              (x) => x.roleA.indexOf(roleLookup) != -1
+            );
+            if (rel) {
               const commentFKIndexes = getCommentIndexes(rel.entityB);
-              const entityBName = rel.entityB.substring(0, commentFKIndexes.beforeStart).trim();
+              const entityBName = rel.entityB
+                .substring(0, commentFKIndexes.beforeStart)
+                .trim();
               $ref = `#/components/schemas/${entityBName}`;
             }
-            if($ref) {
+            if ($ref) {
               // if array additionalProperties.$ref
-              if(type == "array") {
+              if (type == "array") {
                 items = {
-                  $ref: $ref
+                  $ref: $ref,
                 };
               }
               // if object items.$ref
-              if(type == "object") {
+              if (type == "object") {
                 additionalProperties = {
-                  $ref: $ref
+                  $ref: $ref,
                 };
               }
             }
@@ -223,7 +231,7 @@ export function dbToOpenApi(db: DatabaseModelResult): PartialOpenApiSchema {
             title: `${schemaKey}.${propName}`,
             type: type,
           };
-          if(additionalProperties) {
+          if (additionalProperties) {
             property.additionalProperties = additionalProperties;
           }
           if (items) {
@@ -277,9 +285,7 @@ export function GeneratePropertyModel(
     if (property.items && typeof property.items === objectKeyword) {
       if ((property.items as JSONSchema4).format && !property.format) {
         property.format = (property.items as JSONSchema4).format;
-        // columnProperties = `${(property.items as JSONSchema4).format}[]`;
       }
-      // else
       if ((property.items as JSONSchema4).type)
         columnProperties = `${(property.items as JSONSchema4).type}[]`;
     }
@@ -395,10 +401,6 @@ export function ConvertOpenApiToDatabaseModel(
             propertyKey,
             property
           );
-          // if (
-          //   propertyModel.ColumnProperties.includes(objectKeyword) ||
-          //   propertyModel.ColumnProperties.includes(arrayKeyword)
-          // ) {
           if (refName) {
             const primaryKeyModel: ForeignKeyModel = {
               PrimaryKeyTableName: tableModel.Name,
@@ -420,7 +422,6 @@ export function ConvertOpenApiToDatabaseModel(
             models.ForeignKeyList.push(primaryKeyModel);
             propertyModel.IsForeignKey = true;
           }
-          // }
 
           tableModel.Properties.push(propertyModel);
         }

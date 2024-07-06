@@ -935,14 +935,15 @@ Draw.loadPlugin(function (ui) {
         const parser = new generate_sql_ddl_1.DbParser(type, db);
         // generate sql
         let sql = parser.getSQLDataDefinition();
-        sql = `/*\n\tGenerated in drawio\n\tDatabase: ${type}\n\tPlugin: sql\n\tVersion: ${constants_1.pluginVersion}\n*/\n\n` + sql;
+        sql =
+            `/*\n\tGenerated in drawio\n\tDatabase: ${type}\n\tPlugin: sql\n\tVersion: ${constants_1.pluginVersion}\n*/\n\n` +
+                sql;
         sql = sql.trim();
         // update sql value in text area
         sqlInputGenSQL.value = sql;
         // TODO: use selection as well?
         // const modelSelected = ui.editor.graph.getSelectionModel();
     }
-    ;
     mxUtils.br(divGenSQL);
     const resetBtnGenSQL = mxUtils.button(mxResources.get("reset"), function () {
         sqlInputGenSQL.value = sqlExportDefault;
@@ -1023,11 +1024,7 @@ Draw.loadPlugin(function (ui) {
         rowCell = null;
         // load parser
         const parser = new sqlsimpleparser_1.SqlSimpleParser(type);
-        const models = parser
-            .feed(text)
-            .WithoutEnds()
-            .WithEnds()
-            .ToModel();
+        const models = parser.feed(text).WithoutEnds().WithEnds().ToModel();
         foreignKeyList = models.ForeignKeyList;
         primaryKeyList = models.PrimaryKeyList;
         tableList = models.TableList;
@@ -1041,7 +1038,6 @@ Draw.loadPlugin(function (ui) {
             rowCell = createTableResult.rowCell;
         }
     }
-    ;
     mxUtils.br(divFromSQL);
     const resetBtnFromSQL = mxUtils.button(mxResources.get("reset"), function () {
         sqlInputFromSQL.value = defaultReset;

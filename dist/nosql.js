@@ -4650,7 +4650,6 @@ Draw.loadPlugin(function (ui) {
         }
         sqlInputGenSQL.value = result;
     }
-    ;
     mxUtils.br(divGenSQL);
     const resetBtnGenSQL = mxUtils.button(mxResources.get("reset"), function () {
         sqlInputGenSQL.value = sqlExportDefault;
@@ -4713,7 +4712,7 @@ Draw.loadPlugin(function (ui) {
             let openApi = null;
             const openApiOptions = {
                 title: "nosql default options",
-                version: constants_1.pluginVersion
+                version: constants_1.pluginVersion,
             };
             if (type == "openapi") {
                 // should already be a json, but going to serialize to openapi for validation
@@ -4748,7 +4747,6 @@ Draw.loadPlugin(function (ui) {
             console.log(error);
         }
     }
-    ;
     mxUtils.br(divFromNOSQL);
     const resetOpenAPIBtnFromNOSQL = mxUtils.button("Reset OpenAPI", function () {
         sqlInputFromNOSQL.value = constants_nosql_1.defaultResetOpenApi;
@@ -4904,7 +4902,7 @@ const JSONSchemaTypes = [
     "object",
     "array",
     "null",
-    "any"
+    "any",
 ];
 exports.validJSONSchemaTypes = JSONSchemaTypes;
 
@@ -5083,32 +5081,35 @@ function dbToOpenApi(db) {
                             //
                         }
                         else {
-                            // else {
                             removeType = true;
                             $ref = `#/components/schemas/${(0, sharedUtils_1.RemoveNameQuantifiers)(type)}`;
                         }
                     }
                     if (["array", "object"].indexOf(type) !== -1) {
-                        const relationships = db.getRelationships().filter(x => x.entityA == key);
+                        const relationships = db
+                            .getRelationships()
+                            .filter((x) => x.entityA == key);
                         const roleLookup = `[${key}.${propName}]`;
                         // FIND MATCH
-                        const rel = relationships.find(x => x.roleA.indexOf(roleLookup) != -1);
+                        const rel = relationships.find((x) => x.roleA.indexOf(roleLookup) != -1);
                         if (rel) {
                             const commentFKIndexes = (0, sharedUtils_1.getCommentIndexes)(rel.entityB);
-                            const entityBName = rel.entityB.substring(0, commentFKIndexes.beforeStart).trim();
+                            const entityBName = rel.entityB
+                                .substring(0, commentFKIndexes.beforeStart)
+                                .trim();
                             $ref = `#/components/schemas/${entityBName}`;
                         }
                         if ($ref) {
                             // if array additionalProperties.$ref
                             if (type == "array") {
                                 items = {
-                                    $ref: $ref
+                                    $ref: $ref,
                                 };
                             }
                             // if object items.$ref
                             if (type == "object") {
                                 additionalProperties = {
-                                    $ref: $ref
+                                    $ref: $ref,
                                 };
                             }
                         }
@@ -5169,9 +5170,7 @@ function GeneratePropertyModel(tableName, propertyName, property) {
         if (property.items && typeof property.items === constants_1.objectKeyword) {
             if (property.items.format && !property.format) {
                 property.format = property.items.format;
-                // columnProperties = `${(property.items as JSONSchema4).format}[]`;
             }
-            // else
             if (property.items.type)
                 columnProperties = `${property.items.type}[]`;
         }
@@ -5275,10 +5274,6 @@ function ConvertOpenApiToDatabaseModel(schemas) {
                         property.type = refName;
                     }
                     const propertyModel = GeneratePropertyModel(tableModel.Name, propertyKey, property);
-                    // if (
-                    //   propertyModel.ColumnProperties.includes(objectKeyword) ||
-                    //   propertyModel.ColumnProperties.includes(arrayKeyword)
-                    // ) {
                     if (refName) {
                         const primaryKeyModel = {
                             PrimaryKeyTableName: tableModel.Name,
@@ -5300,7 +5295,6 @@ function ConvertOpenApiToDatabaseModel(schemas) {
                         models.ForeignKeyList.push(primaryKeyModel);
                         propertyModel.IsForeignKey = true;
                     }
-                    // }
                     tableModel.Properties.push(propertyModel);
                 }
             }
