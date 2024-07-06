@@ -3,19 +3,35 @@ import {
   OpenApiSchemaTypeDefinition,
   PartialOpenApiSchema,
 } from "openapi-json-schema";
-import { commentColumnQuantifiers, enumKeyword, formatKeyword, pluginVersion, validEnumTypes } from "./constants";
+import {
+  arrayKeyword,
+  commentColumnQuantifiers,
+  enumKeyword,
+  formatKeyword,
+  nullableKeyword,
+  objectKeyword,
+  pluginVersion,
+} from "./constants";
 import { JSONSchema4, JSONSchema4TypeName } from "json-schema";
 import {
   ColumnQuantifiers,
   DatabaseModelResult,
 } from "../types/sql-plugin-types";
-import { dbTypeEnds, generateComment, getCommentIndexes, getDbLabel } from "./sharedUtils";
+import {
+  dbTypeEnds,
+  generateComment,
+  GetColumnQuantifiers,
+  getCommentIndexes,
+  getDbLabel,
+  RemoveNameQuantifiers,
+} from "./sharedUtils";
 import {
   DatabaseModel,
   ForeignKeyModel,
   PropertyModel,
   TableModel,
 } from "@funktechno/sqlsimpleparser/lib/types";
+import { validJSONSchemaTypes } from "./constants-nosql";
 
 /**
  * convert db to openapi
@@ -43,40 +59,39 @@ export function dbToOpenApi(db: DatabaseModelResult): PartialOpenApiSchema {
       let schemaKey = key;
       const entity = entities[key];
       let commentIndexes = getCommentIndexes(key);
-      let description = "";
+      let schemaDescription = "";
       let formatValue = "";
-      if(commentIndexes.start > -1 && commentIndexes.end > -1) {
-        
-          let result = schemaKey.toString().trim();
-          commentIndexes = getCommentIndexes(result);
-          const firstSpaceIndex = commentIndexes.start;
-          const lastSpaceIndex= commentIndexes.end;
-          schemaKey = result.substring(0, commentIndexes.beforeStart);
-          result = result.substring(firstSpaceIndex, lastSpaceIndex).trim();
-          if (result.indexOf(formatKeyword) !== -1) {
+      if (commentIndexes.start > -1 && commentIndexes.end > -1) {
+        let result = schemaKey.toString().trim();
+        commentIndexes = getCommentIndexes(result);
+        const firstSpaceIndex = commentIndexes.start;
+        const lastSpaceIndex = commentIndexes.end;
+        schemaKey = result.substring(0, commentIndexes.beforeStart).trim();
+        result = result.substring(firstSpaceIndex, lastSpaceIndex).trim();
+        if (result.indexOf(formatKeyword) !== -1) {
           const formatIndex = result.indexOf(formatKeyword);
-          formatValue = result.substring(
-              formatIndex + formatKeyword.length
-          ).trim();
+          formatValue = result
+            .substring(formatIndex + formatKeyword.length)
+            .trim();
           result = result.substring(0, formatIndex);
-          }
-          if (result) {
-            description = result;
-          }
+        }
+        if (result) {
+          schemaDescription = result;
+        }
       }
       if (schema[schemaKey]) {
         continue;
       }
       schema[schemaKey] = {
-        type: "object",
+        type: objectKeyword,
         title: schemaKey,
         additionalProperties: false,
         properties: {},
       };
-      if(description) {
-        schema[schemaKey].description = description.trim();
+      if (schemaDescription) {
+        schema[schemaKey].description = schemaDescription.trim();
       }
-      if(formatValue) {
+      if (formatValue) {
         schema[schemaKey].format = formatValue.trim();
       }
       for (let p = 0; p < entity.attributes.length; p++) {
@@ -94,7 +109,7 @@ export function dbToOpenApi(db: DatabaseModelResult): PartialOpenApiSchema {
           const splitPropName = propName.split(" ");
           if (
             splitPropName.length == 2 &&
-            validEnumTypes.indexOf(splitPropName[0]) !== -1 &&
+            validJSONSchemaTypes.indexOf(splitPropName[0]) !== -1 &&
             splitPropName[1] == enumKeyword
           ) {
             isEnum = true;
@@ -102,18 +117,20 @@ export function dbToOpenApi(db: DatabaseModelResult): PartialOpenApiSchema {
           }
         }
         // extract desciption /** asdf */
-        let description = "";
+        let propertyDescription = "";
         let formatValue = "";
         let enumValues: any[] | null = null;
         if (
           attribute.attributeType?.includes(commentColumnQuantifiers.Start) &&
           attribute.attributeType?.includes(commentColumnQuantifiers.End)
         ) {
-          let result = attribute.attributeType;
-          const commentIndexes = getCommentIndexes(result);
+          let attributeTypeResult = attribute.attributeType;
+          const commentIndexes = getCommentIndexes(attributeTypeResult);
           const firstSpaceIndex = commentIndexes.start;
-          const lastSpaceIndex= commentIndexes.end;
-          const enumRaw = result.substring(0, commentIndexes.beforeStart).trim();
+          const lastSpaceIndex = commentIndexes.end;
+          const enumRaw = attributeTypeResult
+            .substring(0, commentIndexes.beforeStart)
+            .trim();
           if (enumRaw) {
             try {
               enumValues = JSON.parse(enumRaw);
@@ -125,16 +142,19 @@ export function dbToOpenApi(db: DatabaseModelResult): PartialOpenApiSchema {
               );
             }
           }
-          result = result.substring(firstSpaceIndex, lastSpaceIndex);
-          if (result.indexOf(formatKeyword) !== -1) {
-            const formatIndex = result.indexOf(formatKeyword);
-            formatValue = result
+          attributeTypeResult = attributeTypeResult.substring(
+            firstSpaceIndex,
+            lastSpaceIndex
+          );
+          if (attributeTypeResult.indexOf(formatKeyword) !== -1) {
+            const formatIndex = attributeTypeResult.indexOf(formatKeyword);
+            formatValue = attributeTypeResult
               .substring(formatIndex + formatKeyword.length)
               .trim();
-            result = result.substring(0, formatIndex);
+            attributeTypeResult = attributeTypeResult.substring(0, formatIndex);
           }
-          if (result) {
-            description = result;
+          if (attributeTypeResult.trim()) {
+            propertyDescription = attributeTypeResult.trim();
           }
 
           // decription = attribute.attributeType?.replace("/**", "").replace("*/", "");
@@ -144,24 +164,97 @@ export function dbToOpenApi(db: DatabaseModelResult): PartialOpenApiSchema {
           if (enumValues) {
             schema[schemaKey].enum = enumValues;
           }
-          if (description) {
-            schema[schemaKey].description = description.trim();
+          if (propertyDescription.trim()) {
+            schema[schemaKey].description = propertyDescription.trim();
           }
-          if (formatValue) {
+          if (formatValue.trim()) {
             schema[schemaKey].format = formatValue.trim();
           }
           schema[schemaKey].type = type;
         } else {
+          // check if type is jsonschema type
+          let $ref = null;
+          let removeType = false;
+          let items: JSONSchema4 | null = null;
+          let additionalProperties: JSONSchema4 | null = null;
+          if (validJSONSchemaTypes.indexOf(type) === -1) {
+            if (type.indexOf("[]") != -1) {
+              const itemsType = type.replace("[]", "") as JSONSchema4TypeName;
+              if (validJSONSchemaTypes.indexOf(itemsType) != -1) {
+                items = {
+                  type: itemsType,
+                };
+                type = "array";
+              }
+            }
+
+            if (validJSONSchemaTypes.indexOf(type) != -1) {
+              //
+            } else {
+              removeType = true;
+              $ref = `#/components/schemas/${RemoveNameQuantifiers(type)}`;
+            }
+          }
+          if (["array", "object"].indexOf(type) !== -1) {
+            const relationships = db
+              .getRelationships()
+              .filter((x) => x.entityA == key);
+            const roleLookup = `[${key}.${propName}]`;
+            // FIND MATCH
+            const rel = relationships.find(
+              (x) => x.roleA.indexOf(roleLookup) != -1
+            );
+            if (rel) {
+              const commentFKIndexes = getCommentIndexes(rel.entityB);
+              const entityBName = rel.entityB
+                .substring(0, commentFKIndexes.beforeStart)
+                .trim();
+              $ref = `#/components/schemas/${entityBName}`;
+            }
+            if ($ref) {
+              // if array additionalProperties.$ref
+              if (type == "array") {
+                items = {
+                  $ref: $ref,
+                };
+              }
+              // if object items.$ref
+              if (type == "object") {
+                additionalProperties = {
+                  $ref: $ref,
+                };
+              }
+            }
+          }
+
           const property: JSONSchema4 = {
-            title: `${key}.${propName}`,
-            nullable: attribute.attributeType?.includes("nullable") ?? false,
+            title: `${schemaKey}.${propName}`,
             type: type,
           };
-          if (description) {
-            property.description = description.trim();
+          if (additionalProperties) {
+            property.additionalProperties = additionalProperties;
           }
-          if (formatValue) {
-            property.format = formatValue.trim();
+          if (items) {
+            property.items = items;
+          }
+          if (attribute.attributeType?.includes("nullable")) {
+            property.nullable = true;
+          }
+          if ($ref && !additionalProperties?.$ref && !items?.$ref) {
+            property["$ref"] = $ref;
+          }
+          if (removeType) {
+            delete property.type;
+          }
+          // $ref properties don't have descriptions
+          if (propertyDescription.trim() && !$ref) {
+            // TODO: pull from proper location
+            property.description = propertyDescription.trim();
+          }
+          if (formatValue.trim()) {
+            if (property.items) {
+              (property.items as JSONSchema4).format = formatValue.trim();
+            } else property.format = formatValue.trim();
           }
           schema[schemaKey].properties[attribute.attributeName!] = property;
         }
@@ -175,17 +268,32 @@ export function dbToOpenApi(db: DatabaseModelResult): PartialOpenApiSchema {
   return result;
 }
 
-// TODO: may need to make recursive for when schema property items is array
+/**
+ * used in uml generation
+ * @param tableName
+ * @param propertyName
+ * @param property
+ * @returns
+ */
 export function GeneratePropertyModel(
   tableName: string,
   propertyName: string,
   property: JSONSchema4
 ): PropertyModel {
-  let columnProperties = (property.type ?? "object").toString();
+  let columnProperties = (property.type ?? objectKeyword).toString();
+  if (columnProperties === arrayKeyword) {
+    if (property.items && typeof property.items === objectKeyword) {
+      if ((property.items as JSONSchema4).format && !property.format) {
+        property.format = (property.items as JSONSchema4).format;
+      }
+      if ((property.items as JSONSchema4).type)
+        columnProperties = `${(property.items as JSONSchema4).type}[]`;
+    }
+  }
   if (property.enum) {
     columnProperties = `${JSON.stringify(property.enum)}`;
   } else if (property.nullable) {
-    columnProperties += " nullable";
+    columnProperties += ` ${nullableKeyword}`;
   }
   const description = generateComment(property.description, property.format);
   if (description) {
@@ -201,7 +309,11 @@ export function GeneratePropertyModel(
   };
   return result;
 }
-
+/**
+ * convert openapi schema to database model
+ * @param schemas
+ * @returns
+ */
 export function ConvertOpenApiToDatabaseModel(
   schemas: Record<string, OpenApiSchemaTypeDefinition>
 ): DatabaseModel {
@@ -211,9 +323,11 @@ export function ConvertOpenApiToDatabaseModel(
     PrimaryKeyList: [],
     ForeignKeyList: [],
   };
+  const tableDict: Record<string, TableModel> = {};
   for (const key in schemas) {
     if (Object.prototype.hasOwnProperty.call(schemas, key)) {
       const schema = schemas[key] as JSONSchema4;
+      const originalKey = dbTypeEnds(key);
       const tableModel: TableModel = {
         Name: dbTypeEnds(key),
         Properties: [],
@@ -221,7 +335,7 @@ export function ConvertOpenApiToDatabaseModel(
       if (schema.enum) {
         const enumList = schema.enum;
         // serialize to string enum [values]
-        const propertyKey = `${schema.type} enum`;
+        const propertyKey = `${schema.type} ${enumKeyword}`;
         const property: JSONSchema4 = {
           enum: enumList,
         };
@@ -249,42 +363,64 @@ export function ConvertOpenApiToDatabaseModel(
           Object.prototype.hasOwnProperty.call(schema.properties, propertyKey)
         ) {
           const property = schema.properties[propertyKey];
+          // if note object or array use ref
+          let refName: string | null | undefined = null;
+          if (property.$ref) {
+            refName = property.$ref.split("/").pop();
+          } else if (property.items && typeof property.items == objectKeyword) {
+            refName = (property.items as JSONSchema4).$ref?.split("/").pop();
+          } else if (
+            property.additionalProperties &&
+            typeof property.additionalProperties == "object"
+          ) {
+            refName = property.additionalProperties.$ref?.split("/").pop();
+          }
+          if (refName) {
+            const refSchema: JSONSchema4 | null = schemas[
+              refName
+            ] as JSONSchema4;
+            if (refSchema && !refSchema.enum) {
+              const comment = generateComment(
+                refSchema.description,
+                refSchema.format
+              );
+              if (comment) {
+                refName = `${dbTypeEnds(refName)} ${comment}`;
+              } else {
+                refName = dbTypeEnds(refName);
+              }
+            } else {
+              refName = dbTypeEnds(refName);
+            }
+          }
+          if (refName && !property.type) {
+            property.type = refName as JSONSchema4TypeName;
+          }
           const propertyModel: PropertyModel = GeneratePropertyModel(
-            key,
+            tableModel.Name,
             propertyKey,
             property
           );
-          if (
-            propertyModel.ColumnProperties.includes("object") ||
-            propertyModel.ColumnProperties.includes("array")
-          ) {
-            let refName: string | null | undefined = null;
-            if (property.$ref) {
-              refName = property.$ref.split("/").pop();
-            } else if (property.items && typeof property.items == "object") {
-              refName = (property.items as JSONSchema4).$ref?.split("/").pop();
-            }
-            if (refName) {
-              const primaryKeyModel: ForeignKeyModel = {
-                PrimaryKeyTableName: dbTypeEnds(key),
-                ReferencesTableName: dbTypeEnds(refName),
-                PrimaryKeyName: dbTypeEnds(propertyKey),
-                // should just point to first property in uml table
-                ReferencesPropertyName: "",
-                IsDestination: false,
-              };
-              const foreignKeyModel: ForeignKeyModel = {
-                ReferencesTableName: dbTypeEnds(key),
-                PrimaryKeyTableName: dbTypeEnds(refName),
-                ReferencesPropertyName: dbTypeEnds(propertyKey),
-                // should just point to first property in uml table
-                PrimaryKeyName: "",
-                IsDestination: true,
-              };
-              models.ForeignKeyList.push(foreignKeyModel);
-              models.ForeignKeyList.push(primaryKeyModel);
-              propertyModel.IsForeignKey = true;
-            }
+          if (refName) {
+            const primaryKeyModel: ForeignKeyModel = {
+              PrimaryKeyTableName: tableModel.Name,
+              ReferencesTableName: refName,
+              PrimaryKeyName: dbTypeEnds(propertyKey),
+              // should just point to first property in uml table
+              ReferencesPropertyName: "",
+              IsDestination: false,
+            };
+            const foreignKeyModel: ForeignKeyModel = {
+              ReferencesTableName: tableModel.Name,
+              PrimaryKeyTableName: refName,
+              ReferencesPropertyName: dbTypeEnds(propertyKey),
+              // should just point to first property in uml table
+              PrimaryKeyName: "",
+              IsDestination: true,
+            };
+            models.ForeignKeyList.push(foreignKeyModel);
+            models.ForeignKeyList.push(primaryKeyModel);
+            propertyModel.IsForeignKey = true;
           }
 
           tableModel.Properties.push(propertyModel);
@@ -292,24 +428,36 @@ export function ConvertOpenApiToDatabaseModel(
       }
 
       models.TableList.push(tableModel);
+      // may no longer be needed
+      if (!tableDict[originalKey]) {
+        tableDict[originalKey] = tableModel;
+      }
     }
   }
   for (let i = 0; i < models.ForeignKeyList.length; i++) {
     const fk = models.ForeignKeyList[i];
     if (!fk.ReferencesPropertyName) {
       // match to first entry
-      const property = models.TableList.find(
+      let property = models.TableList.find(
         (t) => t.Name == fk.ReferencesTableName
       )?.Properties[0];
+      if (!property) {
+        // attempt a comment lookup
+        property = tableDict[fk.ReferencesTableName]?.Properties[0];
+      }
       if (property) {
         models.ForeignKeyList[i].ReferencesPropertyName = property.Name;
       }
     }
     if (!fk.PrimaryKeyName) {
       // match to first entry
-      const property = models.TableList.find(
+      let property = models.TableList.find(
         (t) => t.Name == fk.PrimaryKeyTableName
       )?.Properties[0];
+      if (!property) {
+        // attempt a comment lookup
+        property = tableDict[fk.PrimaryKeyTableName]?.Properties[0];
+      }
       if (property) {
         models.ForeignKeyList[i].PrimaryKeyName = property.Name;
       }
