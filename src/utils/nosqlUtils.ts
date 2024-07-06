@@ -275,18 +275,17 @@ export function ConvertOpenApiToDatabaseModel(
           Object.prototype.hasOwnProperty.call(schema.properties, propertyKey)
         ) {
           const property = schema.properties[propertyKey];
-          // TODO: if note object or array use ref
-
+          // if note object or array use ref
           let refName: string | null | undefined = null;
           if (property.$ref) {
             refName = property.$ref.split("/").pop();
           } else if (property.items && typeof property.items == objectKeyword) {
             refName = (property.items as JSONSchema4).$ref?.split("/").pop();
           } else if (
-            property.additionalItems &&
-            typeof property.additionalItems == "object"
+            property.additionalProperties &&
+            typeof property.additionalProperties == "object"
           ) {
-            refName = property.additionalItems.$ref?.split("/").pop();
+            refName = property.additionalProperties.$ref?.split("/").pop();
           }
           if (refName) {
             const refSchema: JSONSchema4 | null = schemas[
