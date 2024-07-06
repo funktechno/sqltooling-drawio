@@ -153,7 +153,7 @@ export function dbToOpenApi(db: DatabaseModelResult): PartialOpenApiSchema {
           schema[schemaKey].type = type;
         } else {
           const property: JSONSchema4 = {
-            title: `${key}.${propName}`,
+            title: `${schemaKey}.${propName}`,
             nullable: attribute.attributeType?.includes("nullable") ?? false,
             type: type,
           };
@@ -211,9 +211,11 @@ export function ConvertOpenApiToDatabaseModel(
     PrimaryKeyList: [],
     ForeignKeyList: [],
   };
+  const tableDict: Record<string, TableModel> = {};
   for (const key in schemas) {
     if (Object.prototype.hasOwnProperty.call(schemas, key)) {
       const schema = schemas[key] as JSONSchema4;
+      const originalKey = dbTypeEnds(key);
       const tableModel: TableModel = {
         Name: dbTypeEnds(key),
         Properties: [],
@@ -250,7 +252,7 @@ export function ConvertOpenApiToDatabaseModel(
         ) {
           const property = schema.properties[propertyKey];
           const propertyModel: PropertyModel = GeneratePropertyModel(
-            key,
+            tableModel.Name,
             propertyKey,
             property
           );
@@ -264,18 +266,27 @@ export function ConvertOpenApiToDatabaseModel(
             } else if (property.items && typeof property.items == "object") {
               refName = (property.items as JSONSchema4).$ref?.split("/").pop();
             }
+            if(refName) {
+              const refSchema:JSONSchema4|null = schemas[refName] as JSONSchema4;
+              if(refSchema && !refSchema.enum){
+              const comment = generateComment(refSchema.description, refSchema.format);
+                if (comment) {
+                  refName = `${dbTypeEnds(refName)} ${comment}`;
+                }
+              }
+            }
             if (refName) {
               const primaryKeyModel: ForeignKeyModel = {
-                PrimaryKeyTableName: dbTypeEnds(key),
-                ReferencesTableName: dbTypeEnds(refName),
+                PrimaryKeyTableName: tableModel.Name,
+                ReferencesTableName: refName,
                 PrimaryKeyName: dbTypeEnds(propertyKey),
                 // should just point to first property in uml table
                 ReferencesPropertyName: "",
                 IsDestination: false,
               };
               const foreignKeyModel: ForeignKeyModel = {
-                ReferencesTableName: dbTypeEnds(key),
-                PrimaryKeyTableName: dbTypeEnds(refName),
+                ReferencesTableName: tableModel.Name,
+                PrimaryKeyTableName: refName,
                 ReferencesPropertyName: dbTypeEnds(propertyKey),
                 // should just point to first property in uml table
                 PrimaryKeyName: "",
@@ -292,24 +303,36 @@ export function ConvertOpenApiToDatabaseModel(
       }
 
       models.TableList.push(tableModel);
+      // may no longer be needed
+      if(!tableDict[originalKey]) {
+        tableDict[originalKey] = tableModel;
+      }
     }
   }
   for (let i = 0; i < models.ForeignKeyList.length; i++) {
     const fk = models.ForeignKeyList[i];
     if (!fk.ReferencesPropertyName) {
       // match to first entry
-      const property = models.TableList.find(
+      let property = models.TableList.find(
         (t) => t.Name == fk.ReferencesTableName
       )?.Properties[0];
+      if(!property) {
+        // attempt a comment lookup
+        property = tableDict[fk.ReferencesTableName]?.Properties[0];
+      }
       if (property) {
         models.ForeignKeyList[i].ReferencesPropertyName = property.Name;
       }
     }
     if (!fk.PrimaryKeyName) {
       // match to first entry
-      const property = models.TableList.find(
+      let property = models.TableList.find(
         (t) => t.Name == fk.PrimaryKeyTableName
       )?.Properties[0];
+      if(!property) {
+        // attempt a comment lookup
+        property = tableDict[fk.PrimaryKeyTableName]?.Properties[0];
+      }
       if (property) {
         models.ForeignKeyList[i].PrimaryKeyName = property.Name;
       }
