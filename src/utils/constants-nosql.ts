@@ -91,7 +91,7 @@ export const defaultResetOpenApi = `
 }
     `;
 
-const JSONSchemaTypes:JSONSchema4TypeName[] = [
+const JSONSchemaTypes: JSONSchema4TypeName[] = [
   "string",
   "number",
   "integer",
@@ -99,7 +99,7 @@ const JSONSchemaTypes:JSONSchema4TypeName[] = [
   "object",
   "array",
   "null",
-  "any"
+  "any",
 ];
 
-export const validJSONSchemaTypes:string[] = JSONSchemaTypes;
+export const validJSONSchemaTypes: string[] = JSONSchemaTypes;
