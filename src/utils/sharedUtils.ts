@@ -30,8 +30,8 @@ export function GetColumnQuantifiers(
     | undefined
 ): ColumnQuantifiers {
   const chars = {
-    Start: "\"",
-    End: "\"",
+    Start: '"',
+    End: '"',
   };
   if (type && ["mysql", "ts", "openapi"].includes(type)) {
     chars.Start = "`";
@@ -55,7 +55,11 @@ export function removeHtml(label: string) {
   tempDiv.remove();
   return text;
 }
-
+/**
+ * add db ends
+ * @param label
+ * @returns
+ */
 export function dbTypeEnds(label: string): string {
   const char1 = "`";
   const char2 = "`";
@@ -65,7 +69,11 @@ export function dbTypeEnds(label: string): string {
   // }
   return `${char1}${label}${char2}`;
 }
-
+/**
+ * remove name quantifiers
+ * @param name
+ * @returns
+ */
 export function RemoveNameQuantifiers(name: string) {
   return name.replace(/\[|\]|\(|\"|\'|\`/g, "").trim();
 }
@@ -201,7 +209,7 @@ export function getMermaidDiagramDb(
           };
           const comment = generateComment(description, formatValue);
           if (comment) {
-            entity.name += comment;
+            entity.name += ` ${comment}`;
           }
           // const comment =
           for (let c = 0; c < mxcell.children.length; c++) {
@@ -302,18 +310,59 @@ export function getMermaidDiagramDb(
                             columnQuantifiers
                           );
                           sourceId = sourceAttr.attributeName;
-                          const sourceEntity = RemoveNameQuantifiers(
-                            edge.source.parent.value
-                          );
+                          let sourceEntity = edge.source.parent.value;
+                          // extract comments
+                          let commentsIndexes = getCommentIndexes(sourceEntity);
+                          if (
+                            commentsIndexes.start != -1 &&
+                            commentsIndexes.end != -1
+                          ) {
+                            const sourceComment = sourceEntity
+                              .substring(
+                                commentsIndexes.start,
+                                commentsIndexes.end
+                              )
+                              .trim();
+                            sourceEntity = sourceEntity
+                              .substring(0, commentsIndexes.beforeStart)
+                              .trim();
+                            sourceEntity = `${RemoveNameQuantifiers(
+                              sourceEntity
+                            )} ${generateComment(sourceComment)}`;
+                          } else {
+                            sourceEntity = RemoveNameQuantifiers(sourceEntity);
+                          }
                           let targetId = edge.target.value;
                           const targetAttr = getDbLabel(
                             targetId,
                             columnQuantifiers
                           );
                           targetId = targetAttr.attributeName;
-                          const targetEntity = RemoveNameQuantifiers(
-                            edge.target.parent.value
-                          );
+
+                          let targetEntity = edge.target.parent.value;
+                          commentsIndexes = getCommentIndexes(targetEntity);
+                          if (
+                            commentsIndexes.start != -1 &&
+                            commentsIndexes.end != -1
+                          ) {
+                            const targetComment = targetEntity
+                              .substring(
+                                commentsIndexes.start,
+                                commentsIndexes.end
+                              )
+                              .trim();
+                            targetEntity = targetEntity
+                              .substring(0, commentsIndexes.beforeStart)
+                              .trim();
+                            targetEntity = `${RemoveNameQuantifiers(
+                              targetEntity
+                            )} ${generateComment(targetComment)}`;
+                          } else {
+                            targetEntity = RemoveNameQuantifiers(targetEntity);
+                          }
+                          // const targetEntity = RemoveNameQuantifiers(
+                          //   edge.target.parent.value
+                          // );
                           // entityA primary
                           // entityB foreign
                           const relationship: DbRelationshipDefinition = {
@@ -449,7 +498,12 @@ export function getMermaidDiagramDb(
 
   return db;
 }
-
+/**
+ * genearte a database model
+ * @param entities
+ * @param relationships
+ * @returns
+ */
 export function GenerateDatabaseModel(
   entities: Record<string, TableEntity>,
   relationships: DbRelationshipDefinition[]
@@ -480,7 +534,12 @@ export function GenerateDatabaseModel(
 
   return db;
 }
-
+/**
+ * generate a comment using description and format
+ * @param description
+ * @param formatValue
+ * @returns
+ */
 export function generateComment(description?: string, formatValue?: string) {
   let result = "";
   if (description) {
@@ -495,7 +554,19 @@ export function generateComment(description?: string, formatValue?: string) {
   }
   return result;
 }
-
+/**
+ * create uml tables from db models
+ * @param ui
+ * @param wndFromInput
+ * @param tableList
+ * @param cells
+ * @param rowCell
+ * @param tableCell
+ * @param foreignKeyList
+ * @param dx
+ * @param type
+ * @returns
+ */
 export function CreateTableUI(
   ui: DrawioUI,
   wndFromInput: mxWindow,
@@ -645,7 +716,7 @@ export function CreateTableUI(
                       ) {
                         sourceCell = col;
                       }
-                      if(targetCell && sourceCell) break;
+                      if (targetCell && sourceCell) break;
                     }
                   }
                 }
@@ -667,7 +738,15 @@ export function CreateTableUI(
     dx,
   };
 }
-
+/**
+ * add row to uml table
+ * @param ui
+ * @param propertyModel
+ * @param tableName
+ * @param rowCell
+ * @param tableCell
+ * @returns
+ */
 function AddRow(
   ui: DrawioUI,
   propertyModel: PropertyModel,

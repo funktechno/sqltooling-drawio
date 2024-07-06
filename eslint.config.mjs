@@ -9,7 +9,7 @@ export default [
     files: ["**/*.{js,mjs,cjs,ts}"],
     rules: {
       semi: ["error", "always"],
-      quotes: ["error", "double"],
+      quotes: ["off", "double"],
       "@typescript-eslint/explicit-function-return-type": "off",
       "@typescript-eslint/camelcase": "off",
       "@typescript-eslint/no-unsafe-function-type": "off",

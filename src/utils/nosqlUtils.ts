@@ -11,7 +11,6 @@ import {
   nullableKeyword,
   objectKeyword,
   pluginVersion,
-  validEnumTypes,
 } from "./constants";
 import { JSONSchema4, JSONSchema4TypeName } from "json-schema";
 import {
@@ -24,6 +23,7 @@ import {
   GetColumnQuantifiers,
   getCommentIndexes,
   getDbLabel,
+  RemoveNameQuantifiers,
 } from "./sharedUtils";
 import {
   DatabaseModel,
@@ -31,6 +31,7 @@ import {
   PropertyModel,
   TableModel,
 } from "@funktechno/sqlsimpleparser/lib/types";
+import { validJSONSchemaTypes } from "./constants-nosql";
 
 /**
  * convert db to openapi
@@ -58,14 +59,14 @@ export function dbToOpenApi(db: DatabaseModelResult): PartialOpenApiSchema {
       let schemaKey = key;
       const entity = entities[key];
       let commentIndexes = getCommentIndexes(key);
-      let description = "";
+      let schemaDescription = "";
       let formatValue = "";
       if (commentIndexes.start > -1 && commentIndexes.end > -1) {
         let result = schemaKey.toString().trim();
         commentIndexes = getCommentIndexes(result);
         const firstSpaceIndex = commentIndexes.start;
         const lastSpaceIndex = commentIndexes.end;
-        schemaKey = result.substring(0, commentIndexes.beforeStart);
+        schemaKey = result.substring(0, commentIndexes.beforeStart).trim();
         result = result.substring(firstSpaceIndex, lastSpaceIndex).trim();
         if (result.indexOf(formatKeyword) !== -1) {
           const formatIndex = result.indexOf(formatKeyword);
@@ -75,7 +76,7 @@ export function dbToOpenApi(db: DatabaseModelResult): PartialOpenApiSchema {
           result = result.substring(0, formatIndex);
         }
         if (result) {
-          description = result;
+          schemaDescription = result;
         }
       }
       if (schema[schemaKey]) {
@@ -87,8 +88,8 @@ export function dbToOpenApi(db: DatabaseModelResult): PartialOpenApiSchema {
         additionalProperties: false,
         properties: {},
       };
-      if (description) {
-        schema[schemaKey].description = description.trim();
+      if (schemaDescription) {
+        schema[schemaKey].description = schemaDescription.trim();
       }
       if (formatValue) {
         schema[schemaKey].format = formatValue.trim();
@@ -108,7 +109,7 @@ export function dbToOpenApi(db: DatabaseModelResult): PartialOpenApiSchema {
           const splitPropName = propName.split(" ");
           if (
             splitPropName.length == 2 &&
-            validEnumTypes.indexOf(splitPropName[0]) !== -1 &&
+            validJSONSchemaTypes.indexOf(splitPropName[0]) !== -1 &&
             splitPropName[1] == enumKeyword
           ) {
             isEnum = true;
@@ -116,18 +117,18 @@ export function dbToOpenApi(db: DatabaseModelResult): PartialOpenApiSchema {
           }
         }
         // extract desciption /** asdf */
-        let description = "";
+        let propertyDescription = "";
         let formatValue = "";
         let enumValues: any[] | null = null;
         if (
           attribute.attributeType?.includes(commentColumnQuantifiers.Start) &&
           attribute.attributeType?.includes(commentColumnQuantifiers.End)
         ) {
-          let result = attribute.attributeType;
-          const commentIndexes = getCommentIndexes(result);
+          let attributeTypeResult = attribute.attributeType;
+          const commentIndexes = getCommentIndexes(attributeTypeResult);
           const firstSpaceIndex = commentIndexes.start;
           const lastSpaceIndex = commentIndexes.end;
-          const enumRaw = result
+          const enumRaw = attributeTypeResult
             .substring(0, commentIndexes.beforeStart)
             .trim();
           if (enumRaw) {
@@ -141,16 +142,16 @@ export function dbToOpenApi(db: DatabaseModelResult): PartialOpenApiSchema {
               );
             }
           }
-          result = result.substring(firstSpaceIndex, lastSpaceIndex);
-          if (result.indexOf(formatKeyword) !== -1) {
-            const formatIndex = result.indexOf(formatKeyword);
-            formatValue = result
+          attributeTypeResult = attributeTypeResult.substring(firstSpaceIndex, lastSpaceIndex);
+          if (attributeTypeResult.indexOf(formatKeyword) !== -1) {
+            const formatIndex = attributeTypeResult.indexOf(formatKeyword);
+            formatValue = attributeTypeResult
               .substring(formatIndex + formatKeyword.length)
               .trim();
-            result = result.substring(0, formatIndex);
+            attributeTypeResult = attributeTypeResult.substring(0, formatIndex);
           }
-          if (result) {
-            description = result;
+          if (attributeTypeResult.trim()) {
+            propertyDescription = attributeTypeResult.trim();
           }
 
           // decription = attribute.attributeType?.replace("/**", "").replace("*/", "");
@@ -160,24 +161,92 @@ export function dbToOpenApi(db: DatabaseModelResult): PartialOpenApiSchema {
           if (enumValues) {
             schema[schemaKey].enum = enumValues;
           }
-          if (description) {
-            schema[schemaKey].description = description.trim();
+          if (propertyDescription.trim()) {
+            schema[schemaKey].description = propertyDescription.trim();
           }
-          if (formatValue) {
+          if (formatValue.trim()) {
             schema[schemaKey].format = formatValue.trim();
           }
           schema[schemaKey].type = type;
         } else {
+          // check if type is jsonschema type
+          let $ref = null;
+          let removeType = false;
+          let items: JSONSchema4 | null = null;
+          let additionalProperties: JSONSchema4 | null = null;
+          if (validJSONSchemaTypes.indexOf(type) === -1) {
+            if (type.indexOf("[]") != -1) {
+              const itemsType = type.replace("[]", "") as JSONSchema4TypeName;
+              if (validJSONSchemaTypes.indexOf(itemsType) != -1) {
+                items = {
+                  type: itemsType,
+                };
+                type = "array";
+              }
+            }
+
+            if (validJSONSchemaTypes.indexOf(type) != -1) {
+              //
+            } else {
+              // else {
+              removeType = true;
+              $ref = `#/components/schemas/${RemoveNameQuantifiers(type)}`;
+            }
+          }
+          if(["array", "object"].indexOf(type) !== -1) {
+            const relationships = db.getRelationships().filter(x=> x.entityA == key);
+            const roleLookup = `[${key}.${propName}]`;
+            // FIND MATCH
+            const rel = relationships.find(x => x.roleA.indexOf(roleLookup) != -1);
+            if(rel) {
+              const commentFKIndexes = getCommentIndexes(rel.entityB);
+              const entityBName = rel.entityB.substring(0, commentFKIndexes.beforeStart).trim();
+              $ref = `#/components/schemas/${entityBName}`;
+            }
+            if($ref) {
+              // if array additionalProperties.$ref
+              if(type == "array") {
+                items = {
+                  $ref: $ref
+                };
+              }
+              // if object items.$ref
+              if(type == "object") {
+                additionalProperties = {
+                  $ref: $ref
+                };
+              }
+            }
+          }
+
           const property: JSONSchema4 = {
             title: `${schemaKey}.${propName}`,
-            nullable: attribute.attributeType?.includes("nullable") ?? false,
             type: type,
           };
-          if (description) {
-            property.description = description.trim();
+          if(additionalProperties) {
+            property.additionalProperties = additionalProperties;
           }
-          if (formatValue) {
-            property.format = formatValue.trim();
+          if (items) {
+            property.items = items;
+          }
+          if (attribute.attributeType?.includes("nullable")) {
+            property.nullable = true;
+          }
+          if ($ref && !additionalProperties?.$ref && !items?.$ref) {
+            property["$ref"] = $ref;
+          }
+          if (removeType) {
+            delete property.type;
+          }
+          // $ref properties don't have descriptions
+          if (propertyDescription.trim() && !$ref) {
+            // TODO: pull from proper location
+            property.description = propertyDescription.trim();
+          }
+          if (formatValue.trim()) {
+            if (property.items) {
+              (property.items as JSONSchema4).format = formatValue.trim();
+            } else property.format = formatValue.trim();
           }
           schema[schemaKey].properties[attribute.attributeName!] = property;
         }
@@ -191,7 +260,13 @@ export function dbToOpenApi(db: DatabaseModelResult): PartialOpenApiSchema {
   return result;
 }
 
-// TODO: may need to make recursive for when schema property items is array
+/**
+ * used in uml generation
+ * @param tableName
+ * @param propertyName
+ * @param property
+ * @returns
+ */
 export function GeneratePropertyModel(
   tableName: string,
   propertyName: string,
@@ -200,9 +275,12 @@ export function GeneratePropertyModel(
   let columnProperties = (property.type ?? objectKeyword).toString();
   if (columnProperties === arrayKeyword) {
     if (property.items && typeof property.items === objectKeyword) {
-      if ((property.items as JSONSchema4).format)
-        columnProperties = `${(property.items as JSONSchema4).format}[]`;
-      else if ((property.items as JSONSchema4).type)
+      if ((property.items as JSONSchema4).format && !property.format) {
+        property.format = (property.items as JSONSchema4).format;
+        // columnProperties = `${(property.items as JSONSchema4).format}[]`;
+      }
+      // else
+      if ((property.items as JSONSchema4).type)
         columnProperties = `${(property.items as JSONSchema4).type}[]`;
     }
   }
@@ -225,7 +303,11 @@ export function GeneratePropertyModel(
   };
   return result;
 }
-
+/**
+ * convert openapi schema to database model
+ * @param schemas
+ * @returns
+ */
 export function ConvertOpenApiToDatabaseModel(
   schemas: Record<string, OpenApiSchemaTypeDefinition>
 ): DatabaseModel {

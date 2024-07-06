@@ -1,4 +1,5 @@
 import { pluginVersion } from "./constants";
+import { JSONSchema4TypeName } from "json-schema";
 
 export const defaultReset = `/*\n\tDrawio default value\n\tPlugin: nosql\n\tVersion: ${pluginVersion}\n*/\n\n
 export interface WeatherForecast {
@@ -89,3 +90,16 @@ export const defaultResetOpenApi = `
   }
 }
     `;
+
+const JSONSchemaTypes:JSONSchema4TypeName[] = [
+  "string",
+  "number",
+  "integer",
+  "boolean",
+  "object",
+  "array",
+  "null",
+  "any"
+];
+
+export const validJSONSchemaTypes:string[] = JSONSchemaTypes;
