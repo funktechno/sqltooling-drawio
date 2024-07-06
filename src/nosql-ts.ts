@@ -8,7 +8,7 @@ import { convertTypeScriptToCoreTypes } from "core-types-ts/dist/lib/ts-to-core-
 import { convertCoreTypesToTypeScript } from "core-types-ts";
 import { GetColumnQuantifiers, RemoveNameQuantifiers, dbTypeEnds, getDbLabel, getMermaidDiagramDb } from "./utils/sharedUtils";
 import { pluginVersion } from "./utils/constants";
-import { dbToOpenApi } from "./utils/nosqlUtils";
+import { ConvertOpenApiToDatabaseModel, dbToOpenApi, GeneratePropertyModel } from "./utils/nosqlUtils";
 
 declare const window: Customwindow;
 
@@ -281,7 +281,9 @@ export interface Child {
                 const data = JSON.parse(text);
                 const { data: doc } = convertOpenApiToCoreTypes( data );
                 const { data: jsonSchema } = convertCoreTypesToJsonSchema( doc );
-                openApi = jsonSchemaDocumentToOpenApi( jsonSchema, openApiOptions );
+                // was losing format option, just going to check if exception thrown here
+                jsonSchemaDocumentToOpenApi( jsonSchema, openApiOptions );
+                openApi = data;
             } else if(type == "ts"){
                 // serialize typescript classes to openapi spec
                 const { data: doc } = convertTypeScriptToCoreTypes( text );
@@ -290,81 +292,7 @@ export interface Child {
             }
             const schemas  = openApi?.components?.schemas;
             if(schemas){
-                const models: DatabaseModel = {
-                    Dialect: "nosql",
-                    TableList: [],
-                    PrimaryKeyList: [],
-                    ForeignKeyList: [],
-                };
-                
-                for (const key in schemas) {
-                    if (Object.prototype.hasOwnProperty.call(schemas, key)) {
-                        const schema = schemas[key] as JSONSchema4;
-                        const tableModel: TableModel = {
-                            Name: dbTypeEnds(key),
-                            Properties: [],
-                        };
-                        for (const propertyKey in schema.properties) {
-                            if (Object.prototype.hasOwnProperty.call(schema.properties, propertyKey)) {
-                                const property = schema.properties[propertyKey];
-                                const propertyModel: PropertyModel = GeneratePropertyModel(key, propertyKey, property);
-                                if(propertyModel.ColumnProperties.includes("object") || 
-                                    propertyModel.ColumnProperties.includes("array")) {
-                                    let refName: string| null | undefined= null;
-                                    if(property.$ref) {
-                                        refName = property.$ref.split("/").pop();
-                                    } else if(property.items && typeof property.items == "object") {
-                                        refName = (property.items as JSONSchema4).$ref?.split("/").pop();
-                                    }
-                                    if(refName) {
-                                        
-                                        const primaryKeyModel: ForeignKeyModel = {
-                                            PrimaryKeyTableName: dbTypeEnds(key),
-                                            ReferencesTableName: dbTypeEnds(refName),
-                                            PrimaryKeyName: dbTypeEnds(propertyKey),
-                                            // should just point to first property in uml table
-                                            ReferencesPropertyName: "",
-                                            IsDestination: false
-                                        };
-                                        const foreignKeyModel: ForeignKeyModel = {
-                                            ReferencesTableName: dbTypeEnds(key),
-                                            PrimaryKeyTableName: dbTypeEnds(refName),
-                                            ReferencesPropertyName: dbTypeEnds(propertyKey),
-                                            // should just point to first property in uml table
-                                            PrimaryKeyName: "",
-                                            IsDestination: true
-                                        };
-                                        models.ForeignKeyList.push(foreignKeyModel);
-                                        models.ForeignKeyList.push(primaryKeyModel);
-                                        propertyModel.IsForeignKey = true;
-                                    }
-                                }
-                                
-                                tableModel.Properties.push(propertyModel);
-                            }
-                        }
-
-                        models.TableList.push(tableModel);
-                    }
-                }
-                for (let i = 0; i < models.ForeignKeyList.length; i++) {
-                    const fk = models.ForeignKeyList[i];
-                    if(!fk.ReferencesPropertyName){
-                        // match to first entry
-                        const property = models.TableList.find(t => t.Name == fk.ReferencesTableName)?.Properties[0];
-                        if(property){
-                            models.ForeignKeyList[i].ReferencesPropertyName = property.Name;
-                        }
-                    }
-                    if(!fk.PrimaryKeyName){
-                        // match to first entry
-                        const property = models.TableList.find(t => t.Name == fk.PrimaryKeyTableName)?.Properties[0];
-                        if(property){
-                            models.ForeignKeyList[i].PrimaryKeyName = property.Name;
-                        }
-                    }
-                    
-                }
+                const models = ConvertOpenApiToDatabaseModel(schemas);
                 foreignKeyList = models.ForeignKeyList;
                 primaryKeyList = models.PrimaryKeyList;
                 tableList = models.TableList;
@@ -562,20 +490,4 @@ export interface Child {
         }
     }
 });
-// TODO: may need to make recursive for when schema property items is array
-function GeneratePropertyModel(tableName: string, propertyName: string, property: JSONSchema4): PropertyModel {
-    let columnProperties = (property.type ?? "object").toString();
-    if(property.nullable) {
-        columnProperties += " nullable";
-    }
-    const result: PropertyModel = {
-        Name: dbTypeEnds(propertyName),
-        IsPrimaryKey: false,
-        IsForeignKey: false,
-        ColumnProperties: columnProperties,
-        TableName: dbTypeEnds(tableName),
-        ForeignKey: [],
-    };
-    return result;
-}
 
