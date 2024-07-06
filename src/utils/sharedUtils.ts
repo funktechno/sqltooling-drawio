@@ -1,5 +1,6 @@
 import { DbDefinition, DbRelationshipDefinition } from "@funktechno/little-mermaid-2-the-sql/lib/src/types";
-import { ColumnQuantifiers, TableAttribute, TableEntity } from "../types/sql-plugin-types";
+import { ColumnQuantifiers, DatabaseModelResult, TableAttribute, TableEntity } from "../types/sql-plugin-types";
+import { commentColumnQuantifiers, formatKeyword } from "./constants";
 
 /**
  * return text quantifiers for dialect
@@ -86,28 +87,90 @@ export function getDbLabel(
 }
 
 
+export function entityName(description?: string, format?: string): string {
+    let result = "";
+    if (description) {
+      result += `${description}`;
+    }
+    if (format) {
+      result += ` @format ${format}`;
+    }
+    if(result){
+      result = result.trim();
+      result = `/** ${result} */`;
+    }
+    return result;
+}
+
+export function getCommentIndexes(result: string) {
+    let hasComment = false;
+    if(result.indexOf(commentColumnQuantifiers.Start) !== -1 && result.indexOf(commentColumnQuantifiers.End) !== -1){
+        hasComment = true;
+    }
+    const beforeIndex = hasComment ? result.indexOf(commentColumnQuantifiers.Start) : -1;
+    const firstSpaceIndex = hasComment ? result.indexOf(commentColumnQuantifiers.Start) + commentColumnQuantifiers.Start.length : -1;
+    const lastSpaceIndex = hasComment ? result.indexOf(commentColumnQuantifiers.End) -1 : -1;
+
+    return {
+        beforeStart: beforeIndex,
+        start: firstSpaceIndex,
+        end: lastSpaceIndex
+    };
+}
 /**
  * generate db from drawio graph models
  * @param ui 
  * @param type 
  * @returns 
  */
-export function getMermaidDiagramDb(ui: DrawioUI, type: "mysql" | "sqlserver" | "sqlite" | "postgres" | "ts" | "openapi" | undefined): DbDefinition{
+export function getMermaidDiagramDb(ui: DrawioUI, type: "mysql" | "sqlserver" | "sqlite" | "postgres" | "ts" | "openapi" | undefined): DatabaseModelResult{
     const model = ui.editor.graph.getModel();
     // same models from mermaid for diagram relationships
     // only difference is entities is an array rather than object to allow duplicate tables
     const entities: Record<string,TableEntity> = {};
     const relationships: DbRelationshipDefinition[] = [];
+    // TODO: support for ts and openapi enum
     // build models
     for (const key in model.cells) {
         if (Object.hasOwnProperty.call(model.cells, key)) {
             const mxcell = model.cells[key];
             if(mxcell.mxObjectId.indexOf("mxCell") !== -1) {
                 if(mxcell.style && mxcell.style.trim().startsWith("swimlane;")){
+                    let entityName = mxcell.value.toString();
+                    let description = "";
+                    let formatValue = "";
+                    if (
+                        entityName?.includes(commentColumnQuantifiers.Start) &&
+                        entityName?.includes(commentColumnQuantifiers.End)
+                    ) {
+                        let result = entityName.toString();
+                        const commentIndexes = getCommentIndexes(result);
+                        const firstSpaceIndex = commentIndexes.start;
+                        const lastSpaceIndex= commentIndexes.end;
+                        entityName = result.substring(0, commentIndexes.beforeStart);
+                        result = result.substring(firstSpaceIndex, lastSpaceIndex);
+                        if (result.indexOf(formatKeyword) !== -1) {
+                        const formatIndex = result.indexOf(formatKeyword);
+                        formatValue = result.substring(
+                            formatIndex + formatKeyword.length
+                        ).trim();
+                        result = result.substring(0, formatIndex);
+                        }
+                        if (result) {
+                        description = result;
+                        }
+            
+                        // decription = attribute.attributeType?.replace("/**", "").replace("*/", "");
+                    }
                     const entity: TableEntity = {
-                        name: RemoveNameQuantifiers(mxcell.value),
+                        name: RemoveNameQuantifiers(entityName),
                         attributes: [] as TableAttribute[],
                     };
+                    const comment = generateComment(description, formatValue);
+                    if(comment){
+                        entity.name += comment;
+                    }
+                    // const comment = 
                     for (let c = 0; c < mxcell.children.length; c++) {
                         const col = mxcell.children[c];
                         if(col.mxObjectId.indexOf("mxCell") !== -1) {
@@ -264,6 +327,12 @@ export function getMermaidDiagramDb(ui: DrawioUI, type: "mysql" | "sqlserver" | 
         }
     }
 
+    const db = GenerateDatabaseModel(entities, relationships);
+
+    return db;
+}
+
+export function GenerateDatabaseModel(entities: Record<string, TableEntity>, relationships: DbRelationshipDefinition[]) {
     class DatabaseModel{
         constructor(entities: Record<string, TableEntity>, relationships: DbRelationshipDefinition[]){
             this.entities = entities;
@@ -283,7 +352,22 @@ export function getMermaidDiagramDb(ui: DrawioUI, type: "mysql" | "sqlserver" | 
         }
     }
 
-    const db = new DatabaseModel(entities, relationships) as unknown as DbDefinition;
+    const db:DatabaseModelResult = new DatabaseModel(entities, relationships);
 
     return db;
+}
+
+export function generateComment(description?: string, formatValue?: string) {
+    let result = "";
+    if (description) {
+        result += `${description}`;
+    }
+    if (formatValue) {
+        result += ` @format ${formatValue}`;
+    }
+    if(result){
+        result = result.trim();
+        result = `${commentColumnQuantifiers.Start} ${result} ${commentColumnQuantifiers.End}`;
+    }
+    return result;
 }

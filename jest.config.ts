@@ -4,7 +4,7 @@ const config: Config = {
   verbose: true,
   globals: {
     "ts-jest": {
-      tsConfig: "tsconfig.json",
+      tsconfig: "tsconfig.json",
     },
   },
   moduleFileExtensions: ["ts", "js"],
@@ -13,6 +13,7 @@ const config: Config = {
   },
   testMatch: ["**/tests/**/*.spec.(ts|js)"],
   // runner: "jest-serial-runner",
+  testEnvironment: "jsdom",
   // testEnvironment: "node",
   reporters: ["default", "jest-junit"],
   collectCoverageFrom: ["src/**/*.{ts,js}", "!**/node_modules/**", "!**/lib/**"]

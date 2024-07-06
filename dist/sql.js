@@ -898,7 +898,7 @@ const sharedUtils_1 = require("./utils/sharedUtils");
 const constants_1 = require("./utils/constants");
 /**
  * SQL Tools Plugin for importing diagrams from SQL DDL and exporting to SQL.
- * Version: 0.0.4
+ * Version: 0.0.5
  */
 Draw.loadPlugin(function (ui) {
     // export sql methods
@@ -1035,7 +1035,6 @@ Draw.loadPlugin(function (ui) {
             tableCell.insert(rowCell);
             tableCell.geometry.height += 26;
         }
-        rowCell = rowCell;
     }
     ;
     function parseSql(text, type) {
@@ -1229,9 +1228,16 @@ Draw.loadPlugin(function (ui) {
 },{"./utils/constants":5,"./utils/sharedUtils":6,"@funktechno/little-mermaid-2-the-sql/lib/src/generate-sql-ddl":1,"@funktechno/sqlsimpleparser":3}],5:[function(require,module,exports){
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.pluginVersion = void 0;
+exports.validEnumTypes = exports.enumKeyword = exports.formatKeyword = exports.commentColumnQuantifiers = exports.pluginVersion = void 0;
 // export sql methods
-exports.pluginVersion = "0.0.4";
+exports.pluginVersion = "0.0.5";
+exports.commentColumnQuantifiers = {
+    Start: "/**",
+    End: "*/",
+};
+exports.formatKeyword = "@format";
+exports.enumKeyword = "enum";
+exports.validEnumTypes = ["string", "number", "integer", "boolean"];
 
 },{}],6:[function(require,module,exports){
 "use strict";
@@ -1241,7 +1247,12 @@ exports.removeHtml = removeHtml;
 exports.dbTypeEnds = dbTypeEnds;
 exports.RemoveNameQuantifiers = RemoveNameQuantifiers;
 exports.getDbLabel = getDbLabel;
+exports.entityName = entityName;
+exports.getCommentIndexes = getCommentIndexes;
 exports.getMermaidDiagramDb = getMermaidDiagramDb;
+exports.GenerateDatabaseModel = GenerateDatabaseModel;
+exports.generateComment = generateComment;
+const constants_1 = require("./constants");
 /**
  * return text quantifiers for dialect
  * @returns json
@@ -1307,6 +1318,34 @@ function getDbLabel(label, columnQuantifiers) {
     };
     return attribute;
 }
+function entityName(description, format) {
+    let result = "";
+    if (description) {
+        result += `${description}`;
+    }
+    if (format) {
+        result += ` @format ${format}`;
+    }
+    if (result) {
+        result = result.trim();
+        result = `/** ${result} */`;
+    }
+    return result;
+}
+function getCommentIndexes(result) {
+    let hasComment = false;
+    if (result.indexOf(constants_1.commentColumnQuantifiers.Start) !== -1 && result.indexOf(constants_1.commentColumnQuantifiers.End) !== -1) {
+        hasComment = true;
+    }
+    const beforeIndex = hasComment ? result.indexOf(constants_1.commentColumnQuantifiers.Start) : -1;
+    const firstSpaceIndex = hasComment ? result.indexOf(constants_1.commentColumnQuantifiers.Start) + constants_1.commentColumnQuantifiers.Start.length : -1;
+    const lastSpaceIndex = hasComment ? result.indexOf(constants_1.commentColumnQuantifiers.End) - 1 : -1;
+    return {
+        beforeStart: beforeIndex,
+        start: firstSpaceIndex,
+        end: lastSpaceIndex
+    };
+}
 /**
  * generate db from drawio graph models
  * @param ui
@@ -1319,16 +1358,43 @@ function getMermaidDiagramDb(ui, type) {
     // only difference is entities is an array rather than object to allow duplicate tables
     const entities = {};
     const relationships = [];
+    // TODO: support for ts and openapi enum
     // build models
     for (const key in model.cells) {
         if (Object.hasOwnProperty.call(model.cells, key)) {
             const mxcell = model.cells[key];
             if (mxcell.mxObjectId.indexOf("mxCell") !== -1) {
                 if (mxcell.style && mxcell.style.trim().startsWith("swimlane;")) {
+                    let entityName = mxcell.value.toString();
+                    let description = "";
+                    let formatValue = "";
+                    if ((entityName === null || entityName === void 0 ? void 0 : entityName.includes(constants_1.commentColumnQuantifiers.Start)) &&
+                        (entityName === null || entityName === void 0 ? void 0 : entityName.includes(constants_1.commentColumnQuantifiers.End))) {
+                        let result = entityName.toString();
+                        const commentIndexes = getCommentIndexes(result);
+                        const firstSpaceIndex = commentIndexes.start;
+                        const lastSpaceIndex = commentIndexes.end;
+                        entityName = result.substring(0, commentIndexes.beforeStart);
+                        result = result.substring(firstSpaceIndex, lastSpaceIndex);
+                        if (result.indexOf(constants_1.formatKeyword) !== -1) {
+                            const formatIndex = result.indexOf(constants_1.formatKeyword);
+                            formatValue = result.substring(formatIndex + constants_1.formatKeyword.length).trim();
+                            result = result.substring(0, formatIndex);
+                        }
+                        if (result) {
+                            description = result;
+                        }
+                        // decription = attribute.attributeType?.replace("/**", "").replace("*/", "");
+                    }
                     const entity = {
-                        name: RemoveNameQuantifiers(mxcell.value),
+                        name: RemoveNameQuantifiers(entityName),
                         attributes: [],
                     };
+                    const comment = generateComment(description, formatValue);
+                    if (comment) {
+                        entity.name += comment;
+                    }
+                    // const comment = 
                     for (let c = 0; c < mxcell.children.length; c++) {
                         const col = mxcell.children[c];
                         if (col.mxObjectId.indexOf("mxCell") !== -1) {
@@ -1482,6 +1548,10 @@ function getMermaidDiagramDb(ui, type) {
             }
         }
     }
+    const db = GenerateDatabaseModel(entities, relationships);
+    return db;
+}
+function GenerateDatabaseModel(entities, relationships) {
     class DatabaseModel {
         constructor(entities, relationships) {
             this.entities = entities;
@@ -1497,5 +1567,19 @@ function getMermaidDiagramDb(ui, type) {
     const db = new DatabaseModel(entities, relationships);
     return db;
 }
+function generateComment(description, formatValue) {
+    let result = "";
+    if (description) {
+        result += `${description}`;
+    }
+    if (formatValue) {
+        result += ` @format ${formatValue}`;
+    }
+    if (result) {
+        result = result.trim();
+        result = `${constants_1.commentColumnQuantifiers.Start} ${result} ${constants_1.commentColumnQuantifiers.End}`;
+    }
+    return result;
+}
 
-},{}]},{},[4]);
+},{"./constants":5}]},{},[4]);
