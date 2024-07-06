@@ -12,4 +12,10 @@ export const formatKeyword = "@format";
 
 export const enumKeyword = "enum";
 
+export const nullableKeyword = "nullable";
+
+export const arrayKeyword = "array";
+
+export const objectKeyword = "object";
+
 export const validEnumTypes = ["string", "number", "integer", "boolean"]; 

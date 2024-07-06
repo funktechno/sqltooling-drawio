@@ -4,7 +4,7 @@ import { DatabaseModel, ForeignKeyModel, PrimaryKeyModel, PropertyModel, TableMo
 import { JSONSchema4, JSONSchema4TypeName } from "json-schema";
 import { convertCoreTypesToJsonSchema, convertOpenApiToCoreTypes, jsonSchemaDocumentToOpenApi } from "core-types-json-schema";
 import { JsonSchemaDocumentToOpenApiOptions, PartialOpenApiSchema } from "openapi-json-schema";
-import { GetColumnQuantifiers, RemoveNameQuantifiers, dbTypeEnds, getDbLabel, getMermaidDiagramDb } from "./utils/sharedUtils";
+import { CreateTableUI, GetColumnQuantifiers, RemoveNameQuantifiers, dbTypeEnds, getDbLabel, getMermaidDiagramDb } from "./utils/sharedUtils";
 import { pluginVersion } from "./utils/constants";
 import { ConvertOpenApiToDatabaseModel, dbToOpenApi, GeneratePropertyModel } from "./utils/nosqlUtils";
 import { defaultResetOpenApi } from "./utils/constants-nosql";
@@ -130,36 +130,6 @@ Draw.loadPlugin(function(ui) {
     wndFromNOSQL.setResizable(false);
     wndFromNOSQL.setClosable(true);
 
-    function AddRow(propertyModel: PropertyModel, tableName: string) {
-        
-        const cellName = propertyModel.Name + (propertyModel.ColumnProperties ? " " + propertyModel.ColumnProperties: "");
-
-        rowCell = new mxCell(cellName, new mxGeometry(0, 0, 90, 26),
-            "shape=partialRectangle;top=0;left=0;right=0;bottom=0;align=left;verticalAlign=top;spacingTop=-2;fillColor=none;spacingLeft=64;spacingRight=4;overflow=hidden;rotatable=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;dropTarget=0;");
-        rowCell.vertex = true;
-
-        const columnType = propertyModel.IsPrimaryKey && propertyModel.IsForeignKey ? "PK | FK" : propertyModel.IsPrimaryKey ? "PK" : propertyModel.IsForeignKey ? "FK" : "";
-
-        const left = sb.cloneCell(rowCell, columnType);
-        left.connectable = false;
-        left.style = "shape=partialRectangle;top=0;left=0;bottom=0;fillColor=none;align=left;verticalAlign=middle;spacingLeft=4;spacingRight=4;overflow=hidden;rotatable=180;points=[];portConstraint=eastwest;part=1;";
-        left.geometry.width = 54;
-        left.geometry.height = 26;
-        rowCell.insert(left);
-
-        const size = ui.editor.graph.getPreferredSizeForCell(rowCell);
-        
-        if(tableCell){
-            if (size !== null && tableCell.geometry.width < size.width + 10) {
-                tableCell.geometry.width = size.width + 10;
-            }
-
-            tableCell.insert(rowCell);
-            tableCell.geometry.height += 26;
-        }
-
-    };
-
     function parseFromInput(text: string, type?: "ts" | "openapi" | undefined) {
         // reset values
         cells = [];
@@ -190,120 +160,19 @@ Draw.loadPlugin(function(ui) {
                 primaryKeyList = models.PrimaryKeyList;
                 tableList = models.TableList;
                 exportedTables = tableList.length;
-                CreateTableUI(type);
+                const createTableResult = CreateTableUI(ui, wndFromNOSQL, tableList, cells, rowCell, tableCell, foreignKeyList, dx, type);
+                if(createTableResult){
+                    cells = createTableResult.cells;
+                    dx = createTableResult.dx;
+                    tableCell = createTableResult.tableCell;
+                    rowCell = createTableResult.rowCell;
+                }
             }
          
         } catch (error) {
             console.log(`unable to serialize the response:${type}`);
             console.log(error);
         }
-    };
-
-    function CreateTableUI(type: "ts" | "openapi" | undefined) {
-        tableList.forEach(function(tableModel) {
-            //Define table size width
-            const maxNameLenght = 100 + tableModel.Name.length;
-
-            //Create Table
-            tableCell = new mxCell(tableModel.Name, new mxGeometry(dx, 0, maxNameLenght, 26),
-                "swimlane;fontStyle=0;childLayout=stackLayout;horizontal=1;startSize=26;fillColor=default;horizontalStack=0;resizeParent=1;resizeLast=0;collapsible=1;marginBottom=0;swimlaneFillColor=default;align=center;");
-            tableCell.vertex = true;
-
-            //Resize row
-            if(rowCell){
-            const size = ui.editor.graph.getPreferredSizeForCell(rowCell);
-                if (size !== null) {
-                    tableCell.geometry.width = size.width + maxNameLenght;
-                }
-            }
-
-            //Add Table to cells
-            cells.push(tableCell);
-
-            //Add properties
-            tableModel.Properties.forEach(function(propertyModel) {
-
-                //Add row
-                AddRow(propertyModel, tableModel.Name);
-            });
-
-            //Close table
-            dx += tableCell.geometry.width + 40;
-            tableCell = null;
-        });
-
-        if (cells.length > 0) {
-            const graph = ui.editor.graph;
-            const view = graph.view;
-            const bds = graph.getGraphBounds();
-
-            // Computes unscaled, untranslated graph bounds
-            const x = Math.ceil(Math.max(0, bds.x / view.scale - view.translate.x) + 4 * graph.gridSize);
-            const y = Math.ceil(Math.max(0, (bds.y + bds.height) / view.scale - view.translate.y) + 4 * graph.gridSize);
-
-            graph.setSelectionCells(graph.importCells(cells, x, y));
-            // add foreign key edges
-            const model = graph.getModel();
-            const columnQuantifiers = GetColumnQuantifiers(type);
-            // const pt = graph.getFreeInsertPoint();
-            foreignKeyList.forEach(function(fk){
-                if(fk.IsDestination && fk.PrimaryKeyName && fk.ReferencesPropertyName && 
-                    fk.PrimaryKeyTableName && fk.ReferencesTableName) {
-                    const insertEdge = mxUtils.bind(this, function(targetCell, sourceCell, edge){
-                        const label = "";
-                        const edgeStyle = "edgeStyle=entityRelationEdgeStyle;html=1;endArrow=ERzeroToMany;startArrow=ERzeroToOne;labelBackgroundColor=none;fontFamily=Verdana;fontSize=14;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=-0.018;entryY=0.608;entryDx=0;entryDy=0;entryPerimeter=0;";
-                        const edgeCell = graph.insertEdge(null, null, label || "", (edge.invert) ?
-                        sourceCell : targetCell, (edge.invert) ? targetCell : sourceCell, edgeStyle);
-                    });
-                    const edge = {
-                        invert: true
-                    };
-                    let targetCell = null;
-                    let sourceCell = null;
-                    // locate edge source and target cells
-                    for (const key in model.cells) {
-                        if(targetCell && sourceCell)
-                            break;
-                        if (Object.hasOwnProperty.call(model.cells, key)) {
-                            const mxcell = model.cells[key];
-                            if(mxcell.style && mxcell.style.trim().startsWith("swimlane;")){
-                                const entity = {
-                                    name: mxcell.value,
-                                    attributes: []
-                                };
-                                const isPrimaryTable = entity.name == fk.PrimaryKeyTableName;
-                                const isForeignTable = entity.name == fk.ReferencesTableName;
-                                if(isPrimaryTable || isForeignTable){
-                                    for (let c = 0; c < mxcell.children.length; c++) {
-                                        if(targetCell && sourceCell)
-                                            break;
-                                        const col = mxcell.children[c];
-                                        if(col.mxObjectId.indexOf("mxCell") !== -1) {
-                                            if(col.style && col.style.trim().startsWith("shape=partialRectangle")){
-                                                const attribute = getDbLabel(col.value, columnQuantifiers);
-                                                if(isPrimaryTable && dbTypeEnds(attribute.attributeName) == fk.PrimaryKeyName){
-                                                    targetCell = col;
-                                                    break;
-                                                } else if(isForeignTable && dbTypeEnds(attribute.attributeName) == fk.ReferencesPropertyName){
-                                                    sourceCell = col;
-                                                    break;
-                                                }
-                                            }
-                                        }
-                                    }
-                                }
-
-                            }
-                        }
-                    }
-                    if(targetCell && sourceCell)
-                        insertEdge(targetCell, sourceCell, edge);
-                }
-            });
-            graph.scrollCellToVisible(graph.getSelectionCell());
-        }
-
-        wndFromNOSQL.setVisible(false);
     };
 
     mxUtils.br(divFromNOSQL);
