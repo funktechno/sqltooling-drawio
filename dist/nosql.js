@@ -4604,9 +4604,10 @@ const core_types_json_schema_1 = require("core-types-json-schema");
 const sharedUtils_1 = require("./utils/sharedUtils");
 const constants_1 = require("./utils/constants");
 const nosqlUtils_1 = require("./utils/nosqlUtils");
+const constants_nosql_1 = require("./utils/constants-nosql");
 /**
  * SQL Tools Plugin for importing and exporting typescript interfaces.
- * Version: 0.0.5
+ * Version: 0.0.6
  */
 Draw.loadPlugin(function (ui) {
     //Create Base div
@@ -4691,7 +4692,140 @@ Draw.loadPlugin(function (ui) {
     const sqlInputFromNOSQL = document.createElement("textarea");
     sqlInputFromNOSQL.style.height = "200px";
     sqlInputFromNOSQL.style.width = "100%";
-    const defaultResetOpenApi = `
+    sqlInputFromNOSQL.value = constants_nosql_1.defaultResetOpenApi;
+    mxUtils.br(divFromNOSQL);
+    divFromNOSQL.appendChild(sqlInputFromNOSQL);
+    // const graph = ui.editor.graph;
+    // Extends Extras menu
+    mxResources.parse("fromNoSql=From NoSQL");
+    const wndFromNOSQL = new mxWindow(mxResources.get("fromNoSql"), divFromNOSQL, document.body.offsetWidth - 480, 140, 320, 320, true, true);
+    wndFromNOSQL.destroyOnClose = false;
+    wndFromNOSQL.setMaximizable(false);
+    wndFromNOSQL.setResizable(false);
+    wndFromNOSQL.setClosable(true);
+    function parseFromInput(text, type) {
+        var _a;
+        // reset values
+        cells = [];
+        tableCell = null;
+        rowCell = null;
+        try {
+            let openApi = null;
+            const openApiOptions = {
+                title: "nosql default options",
+                version: constants_1.pluginVersion
+            };
+            if (type == "openapi") {
+                // should already be a json, but going to serialize to openapi for validation
+                const data = JSON.parse(text);
+                const { data: doc } = (0, core_types_json_schema_1.convertOpenApiToCoreTypes)(data);
+                const { data: jsonSchema } = (0, core_types_json_schema_1.convertCoreTypesToJsonSchema)(doc);
+                // was losing format option, just going to check if exception thrown here
+                (0, core_types_json_schema_1.jsonSchemaDocumentToOpenApi)(jsonSchema, openApiOptions);
+                openApi = data;
+            }
+            else {
+                throw new Error(`type:${type} is not supported`);
+            }
+            const schemas = (_a = openApi === null || openApi === void 0 ? void 0 : openApi.components) === null || _a === void 0 ? void 0 : _a.schemas;
+            if (schemas) {
+                const models = (0, nosqlUtils_1.ConvertOpenApiToDatabaseModel)(schemas);
+                foreignKeyList = models.ForeignKeyList;
+                primaryKeyList = models.PrimaryKeyList;
+                tableList = models.TableList;
+                exportedTables = tableList.length;
+                const createTableResult = (0, sharedUtils_1.CreateTableUI)(ui, wndFromNOSQL, tableList, cells, rowCell, tableCell, foreignKeyList, dx, type);
+                if (createTableResult) {
+                    cells = createTableResult.cells;
+                    dx = createTableResult.dx;
+                    tableCell = createTableResult.tableCell;
+                    rowCell = createTableResult.rowCell;
+                }
+            }
+        }
+        catch (error) {
+            console.log(`unable to serialize the response:${type}`);
+            console.log(error);
+        }
+    }
+    ;
+    mxUtils.br(divFromNOSQL);
+    const resetOpenAPIBtnFromNOSQL = mxUtils.button("Reset OpenAPI", function () {
+        sqlInputFromNOSQL.value = constants_nosql_1.defaultResetOpenApi;
+    });
+    resetOpenAPIBtnFromNOSQL.style.marginTop = "8px";
+    resetOpenAPIBtnFromNOSQL.style.marginRight = "4px";
+    resetOpenAPIBtnFromNOSQL.style.padding = "4px";
+    divFromNOSQL.appendChild(resetOpenAPIBtnFromNOSQL);
+    const btnFromNOSQL_OpenAPI = mxUtils.button("Insert OpenAPI", function () {
+        parseFromInput(sqlInputFromNOSQL.value, "openapi");
+    });
+    btnFromNOSQL_OpenAPI.style.marginTop = "8px";
+    btnFromNOSQL_OpenAPI.style.padding = "4px";
+    divFromNOSQL.appendChild(btnFromNOSQL_OpenAPI);
+    // Adds action
+    ui.actions.addAction("fromNoSql", function () {
+        wndFromNOSQL.setVisible(!wndFromNOSQL.isVisible());
+        if (wndFromNOSQL.isVisible()) {
+            sqlInputFromNOSQL.focus();
+        }
+    });
+    // end import diagrams from sql text methods
+    // finalize menu buttons
+    const theMenu = ui.menus.get("insert");
+    if (theMenu) {
+        const oldMenu = theMenu.funct;
+        theMenu.funct = function (...args) {
+            const [menu, parent] = args;
+            oldMenu.apply(this, args);
+            ui.menus.addMenuItems(menu, ["fromNoSql"], parent);
+        };
+    }
+    if (theMenuExportAs && !window.VsCodeApi) {
+        const oldMenuExportAs = theMenuExportAs.funct;
+        theMenuExportAs.funct = function (...args) {
+            const [menu, parent] = args;
+            oldMenuExportAs.apply(this, args);
+            ui.menus.addMenuItems(menu, ["tonosql"], parent);
+        };
+    }
+    else {
+        // vscode file export sql menu
+        const menu = ui.menus.get("file");
+        if (menu && menu.enabled) {
+            const oldMenuExportAs = menu.funct;
+            menu.funct = function (...args) {
+                const [menu, parent] = args;
+                oldMenuExportAs.apply(this, args);
+                ui.menus.addMenuItems(menu, ["tonosql"], parent);
+            };
+        }
+    }
+});
+
+},{"./utils/constants":30,"./utils/constants-nosql":29,"./utils/nosqlUtils":31,"./utils/sharedUtils":32,"core-types-json-schema":1}],29:[function(require,module,exports){
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.validJSONSchemaTypes = exports.defaultResetOpenApi = exports.defaultReset = void 0;
+const constants_1 = require("./constants");
+exports.defaultReset = `/*\n\tDrawio default value\n\tPlugin: nosql\n\tVersion: ${constants_1.pluginVersion}\n*/\n\n
+export interface WeatherForecast {
+  /** @format date-time */
+  date?: string;
+  /** @format int32 */
+  temperatureC?: number;
+  /** @format int32 */
+  temperatureF?: number;
+  summary?: string | null;
+  nestedProp: string[];
+  children?: Child[];
+}
+
+export interface Child {
+  name: string
+}
+    `;
+exports.defaultResetOpenApi = `
 {
   "openapi": "3.0.0",
   "info": {
@@ -4762,243 +4896,35 @@ Draw.loadPlugin(function (ui) {
   }
 }
     `;
-    sqlInputFromNOSQL.value = defaultResetOpenApi;
-    mxUtils.br(divFromNOSQL);
-    divFromNOSQL.appendChild(sqlInputFromNOSQL);
-    // const graph = ui.editor.graph;
-    // Extends Extras menu
-    mxResources.parse("fromNoSql=From NoSQL");
-    const wndFromNOSQL = new mxWindow(mxResources.get("fromNoSql"), divFromNOSQL, document.body.offsetWidth - 480, 140, 320, 320, true, true);
-    wndFromNOSQL.destroyOnClose = false;
-    wndFromNOSQL.setMaximizable(false);
-    wndFromNOSQL.setResizable(false);
-    wndFromNOSQL.setClosable(true);
-    function AddRow(propertyModel, tableName) {
-        const cellName = propertyModel.Name + (propertyModel.ColumnProperties ? " " + propertyModel.ColumnProperties : "");
-        rowCell = new mxCell(cellName, new mxGeometry(0, 0, 90, 26), "shape=partialRectangle;top=0;left=0;right=0;bottom=0;align=left;verticalAlign=top;spacingTop=-2;fillColor=none;spacingLeft=64;spacingRight=4;overflow=hidden;rotatable=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;dropTarget=0;");
-        rowCell.vertex = true;
-        const columnType = propertyModel.IsPrimaryKey && propertyModel.IsForeignKey ? "PK | FK" : propertyModel.IsPrimaryKey ? "PK" : propertyModel.IsForeignKey ? "FK" : "";
-        const left = sb.cloneCell(rowCell, columnType);
-        left.connectable = false;
-        left.style = "shape=partialRectangle;top=0;left=0;bottom=0;fillColor=none;align=left;verticalAlign=middle;spacingLeft=4;spacingRight=4;overflow=hidden;rotatable=180;points=[];portConstraint=eastwest;part=1;";
-        left.geometry.width = 54;
-        left.geometry.height = 26;
-        rowCell.insert(left);
-        const size = ui.editor.graph.getPreferredSizeForCell(rowCell);
-        if (tableCell) {
-            if (size !== null && tableCell.geometry.width < size.width + 10) {
-                tableCell.geometry.width = size.width + 10;
-            }
-            tableCell.insert(rowCell);
-            tableCell.geometry.height += 26;
-        }
-    }
-    ;
-    function parseFromInput(text, type) {
-        var _a;
-        // reset values
-        cells = [];
-        tableCell = null;
-        rowCell = null;
-        try {
-            let openApi = null;
-            const openApiOptions = {
-                title: "nosql default options",
-                version: constants_1.pluginVersion
-            };
-            if (type == "openapi") {
-                // should already be a json, but going to serialize to openapi for validation
-                const data = JSON.parse(text);
-                const { data: doc } = (0, core_types_json_schema_1.convertOpenApiToCoreTypes)(data);
-                const { data: jsonSchema } = (0, core_types_json_schema_1.convertCoreTypesToJsonSchema)(doc);
-                // was losing format option, just going to check if exception thrown here
-                (0, core_types_json_schema_1.jsonSchemaDocumentToOpenApi)(jsonSchema, openApiOptions);
-                openApi = data;
-            }
-            else {
-                throw new Error(`type:${type} is not supported`);
-            }
-            const schemas = (_a = openApi === null || openApi === void 0 ? void 0 : openApi.components) === null || _a === void 0 ? void 0 : _a.schemas;
-            if (schemas) {
-                const models = (0, nosqlUtils_1.ConvertOpenApiToDatabaseModel)(schemas);
-                foreignKeyList = models.ForeignKeyList;
-                primaryKeyList = models.PrimaryKeyList;
-                tableList = models.TableList;
-                exportedTables = tableList.length;
-                CreateTableUI(type);
-            }
-        }
-        catch (error) {
-            console.log(`unable to serialize the response:${type}`);
-            console.log(error);
-        }
-    }
-    ;
-    function CreateTableUI(type) {
-        tableList.forEach(function (tableModel) {
-            //Define table size width
-            const maxNameLenght = 100 + tableModel.Name.length;
-            //Create Table
-            tableCell = new mxCell(tableModel.Name, new mxGeometry(dx, 0, maxNameLenght, 26), "swimlane;fontStyle=0;childLayout=stackLayout;horizontal=1;startSize=26;fillColor=default;horizontalStack=0;resizeParent=1;resizeLast=0;collapsible=1;marginBottom=0;swimlaneFillColor=default;align=center;");
-            tableCell.vertex = true;
-            //Resize row
-            if (rowCell) {
-                const size = ui.editor.graph.getPreferredSizeForCell(rowCell);
-                if (size !== null) {
-                    tableCell.geometry.width = size.width + maxNameLenght;
-                }
-            }
-            //Add Table to cells
-            cells.push(tableCell);
-            //Add properties
-            tableModel.Properties.forEach(function (propertyModel) {
-                //Add row
-                AddRow(propertyModel, tableModel.Name);
-            });
-            //Close table
-            dx += tableCell.geometry.width + 40;
-            tableCell = null;
-        });
-        if (cells.length > 0) {
-            const graph = ui.editor.graph;
-            const view = graph.view;
-            const bds = graph.getGraphBounds();
-            // Computes unscaled, untranslated graph bounds
-            const x = Math.ceil(Math.max(0, bds.x / view.scale - view.translate.x) + 4 * graph.gridSize);
-            const y = Math.ceil(Math.max(0, (bds.y + bds.height) / view.scale - view.translate.y) + 4 * graph.gridSize);
-            graph.setSelectionCells(graph.importCells(cells, x, y));
-            // add foreign key edges
-            const model = graph.getModel();
-            const columnQuantifiers = (0, sharedUtils_1.GetColumnQuantifiers)(type);
-            // const pt = graph.getFreeInsertPoint();
-            foreignKeyList.forEach(function (fk) {
-                if (fk.IsDestination && fk.PrimaryKeyName && fk.ReferencesPropertyName &&
-                    fk.PrimaryKeyTableName && fk.ReferencesTableName) {
-                    const insertEdge = mxUtils.bind(this, function (targetCell, sourceCell, edge) {
-                        const label = "";
-                        const edgeStyle = "edgeStyle=entityRelationEdgeStyle;html=1;endArrow=ERzeroToMany;startArrow=ERzeroToOne;labelBackgroundColor=none;fontFamily=Verdana;fontSize=14;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=-0.018;entryY=0.608;entryDx=0;entryDy=0;entryPerimeter=0;";
-                        const edgeCell = graph.insertEdge(null, null, label || "", (edge.invert) ?
-                            sourceCell : targetCell, (edge.invert) ? targetCell : sourceCell, edgeStyle);
-                    });
-                    const edge = {
-                        invert: true
-                    };
-                    let targetCell = null;
-                    let sourceCell = null;
-                    // locate edge source and target cells
-                    for (const key in model.cells) {
-                        if (targetCell && sourceCell)
-                            break;
-                        if (Object.hasOwnProperty.call(model.cells, key)) {
-                            const mxcell = model.cells[key];
-                            if (mxcell.style && mxcell.style.trim().startsWith("swimlane;")) {
-                                const entity = {
-                                    name: mxcell.value,
-                                    attributes: []
-                                };
-                                const isPrimaryTable = entity.name == fk.PrimaryKeyTableName;
-                                const isForeignTable = entity.name == fk.ReferencesTableName;
-                                if (isPrimaryTable || isForeignTable) {
-                                    for (let c = 0; c < mxcell.children.length; c++) {
-                                        if (targetCell && sourceCell)
-                                            break;
-                                        const col = mxcell.children[c];
-                                        if (col.mxObjectId.indexOf("mxCell") !== -1) {
-                                            if (col.style && col.style.trim().startsWith("shape=partialRectangle")) {
-                                                const attribute = (0, sharedUtils_1.getDbLabel)(col.value, columnQuantifiers);
-                                                if (isPrimaryTable && (0, sharedUtils_1.dbTypeEnds)(attribute.attributeName) == fk.PrimaryKeyName) {
-                                                    targetCell = col;
-                                                    break;
-                                                }
-                                                else if (isForeignTable && (0, sharedUtils_1.dbTypeEnds)(attribute.attributeName) == fk.ReferencesPropertyName) {
-                                                    sourceCell = col;
-                                                    break;
-                                                }
-                                            }
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                    }
-                    if (targetCell && sourceCell)
-                        insertEdge(targetCell, sourceCell, edge);
-                }
-            });
-            graph.scrollCellToVisible(graph.getSelectionCell());
-        }
-        wndFromNOSQL.setVisible(false);
-    }
-    ;
-    mxUtils.br(divFromNOSQL);
-    const resetOpenAPIBtnFromNOSQL = mxUtils.button("Reset OpenAPI", function () {
-        sqlInputFromNOSQL.value = defaultResetOpenApi;
-    });
-    resetOpenAPIBtnFromNOSQL.style.marginTop = "8px";
-    resetOpenAPIBtnFromNOSQL.style.marginRight = "4px";
-    resetOpenAPIBtnFromNOSQL.style.padding = "4px";
-    divFromNOSQL.appendChild(resetOpenAPIBtnFromNOSQL);
-    const btnFromNOSQL_OpenAPI = mxUtils.button("Insert OpenAPI", function () {
-        parseFromInput(sqlInputFromNOSQL.value, "openapi");
-    });
-    btnFromNOSQL_OpenAPI.style.marginTop = "8px";
-    btnFromNOSQL_OpenAPI.style.padding = "4px";
-    divFromNOSQL.appendChild(btnFromNOSQL_OpenAPI);
-    // Adds action
-    ui.actions.addAction("fromNoSql", function () {
-        wndFromNOSQL.setVisible(!wndFromNOSQL.isVisible());
-        if (wndFromNOSQL.isVisible()) {
-            sqlInputFromNOSQL.focus();
-        }
-    });
-    // end import diagrams from sql text methods
-    // finalize menu buttons
-    const theMenu = ui.menus.get("insert");
-    if (theMenu) {
-        const oldMenu = theMenu.funct;
-        theMenu.funct = function (...args) {
-            const [menu, parent] = args;
-            oldMenu.apply(this, args);
-            ui.menus.addMenuItems(menu, ["fromNoSql"], parent);
-        };
-    }
-    if (theMenuExportAs && !window.VsCodeApi) {
-        const oldMenuExportAs = theMenuExportAs.funct;
-        theMenuExportAs.funct = function (...args) {
-            const [menu, parent] = args;
-            oldMenuExportAs.apply(this, args);
-            ui.menus.addMenuItems(menu, ["tonosql"], parent);
-        };
-    }
-    else {
-        // vscode file export sql menu
-        const menu = ui.menus.get("file");
-        if (menu && menu.enabled) {
-            const oldMenuExportAs = menu.funct;
-            menu.funct = function (...args) {
-                const [menu, parent] = args;
-                oldMenuExportAs.apply(this, args);
-                ui.menus.addMenuItems(menu, ["tonosql"], parent);
-            };
-        }
-    }
-});
+const JSONSchemaTypes = [
+    "string",
+    "number",
+    "integer",
+    "boolean",
+    "object",
+    "array",
+    "null",
+    "any"
+];
+exports.validJSONSchemaTypes = JSONSchemaTypes;
 
-},{"./utils/constants":29,"./utils/nosqlUtils":30,"./utils/sharedUtils":31,"core-types-json-schema":1}],29:[function(require,module,exports){
+},{"./constants":30}],30:[function(require,module,exports){
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.validEnumTypes = exports.enumKeyword = exports.formatKeyword = exports.commentColumnQuantifiers = exports.pluginVersion = void 0;
+exports.objectKeyword = exports.arrayKeyword = exports.nullableKeyword = exports.enumKeyword = exports.formatKeyword = exports.commentColumnQuantifiers = exports.pluginVersion = void 0;
 // export sql methods
-exports.pluginVersion = "0.0.5";
+exports.pluginVersion = "0.0.6";
 exports.commentColumnQuantifiers = {
     Start: "/**",
     End: "*/",
 };
 exports.formatKeyword = "@format";
 exports.enumKeyword = "enum";
-exports.validEnumTypes = ["string", "number", "integer", "boolean"];
+exports.nullableKeyword = "nullable";
+exports.arrayKeyword = "array";
+exports.objectKeyword = "object";
 
-},{}],30:[function(require,module,exports){
+},{}],31:[function(require,module,exports){
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.dbToOpenApi = dbToOpenApi;
@@ -5006,13 +4932,14 @@ exports.GeneratePropertyModel = GeneratePropertyModel;
 exports.ConvertOpenApiToDatabaseModel = ConvertOpenApiToDatabaseModel;
 const constants_1 = require("./constants");
 const sharedUtils_1 = require("./sharedUtils");
+const constants_nosql_1 = require("./constants-nosql");
 /**
  * convert db to openapi
  * @param db
  * @returns
  */
 function dbToOpenApi(db) {
-    var _a, _b, _c, _d, _e, _f, _g;
+    var _a, _b, _c, _d, _e, _f;
     const result = {
         openapi: "3.0.0",
         info: {
@@ -5033,35 +4960,37 @@ function dbToOpenApi(db) {
             let schemaKey = key;
             const entity = entities[key];
             let commentIndexes = (0, sharedUtils_1.getCommentIndexes)(key);
-            let description = "";
+            let schemaDescription = "";
             let formatValue = "";
             if (commentIndexes.start > -1 && commentIndexes.end > -1) {
                 let result = schemaKey.toString().trim();
                 commentIndexes = (0, sharedUtils_1.getCommentIndexes)(result);
                 const firstSpaceIndex = commentIndexes.start;
                 const lastSpaceIndex = commentIndexes.end;
-                schemaKey = result.substring(0, commentIndexes.beforeStart);
+                schemaKey = result.substring(0, commentIndexes.beforeStart).trim();
                 result = result.substring(firstSpaceIndex, lastSpaceIndex).trim();
                 if (result.indexOf(constants_1.formatKeyword) !== -1) {
                     const formatIndex = result.indexOf(constants_1.formatKeyword);
-                    formatValue = result.substring(formatIndex + constants_1.formatKeyword.length).trim();
+                    formatValue = result
+                        .substring(formatIndex + constants_1.formatKeyword.length)
+                        .trim();
                     result = result.substring(0, formatIndex);
                 }
                 if (result) {
-                    description = result;
+                    schemaDescription = result;
                 }
             }
             if (schema[schemaKey]) {
                 continue;
             }
             schema[schemaKey] = {
-                type: "object",
+                type: constants_1.objectKeyword,
                 title: schemaKey,
                 additionalProperties: false,
                 properties: {},
             };
-            if (description) {
-                schema[schemaKey].description = description.trim();
+            if (schemaDescription) {
+                schema[schemaKey].description = schemaDescription.trim();
             }
             if (formatValue) {
                 schema[schemaKey].format = formatValue.trim();
@@ -5080,23 +5009,25 @@ function dbToOpenApi(db) {
                 if (propName.indexOf(constants_1.enumKeyword) !== -1) {
                     const splitPropName = propName.split(" ");
                     if (splitPropName.length == 2 &&
-                        constants_1.validEnumTypes.indexOf(splitPropName[0]) !== -1 &&
+                        constants_nosql_1.validJSONSchemaTypes.indexOf(splitPropName[0]) !== -1 &&
                         splitPropName[1] == constants_1.enumKeyword) {
                         isEnum = true;
                         type = splitPropName[0];
                     }
                 }
                 // extract desciption /** asdf */
-                let description = "";
+                let propertyDescription = "";
                 let formatValue = "";
                 let enumValues = null;
                 if (((_d = attribute.attributeType) === null || _d === void 0 ? void 0 : _d.includes(constants_1.commentColumnQuantifiers.Start)) &&
                     ((_e = attribute.attributeType) === null || _e === void 0 ? void 0 : _e.includes(constants_1.commentColumnQuantifiers.End))) {
-                    let result = attribute.attributeType;
-                    const commentIndexes = (0, sharedUtils_1.getCommentIndexes)(result);
+                    let attributeTypeResult = attribute.attributeType;
+                    const commentIndexes = (0, sharedUtils_1.getCommentIndexes)(attributeTypeResult);
                     const firstSpaceIndex = commentIndexes.start;
                     const lastSpaceIndex = commentIndexes.end;
-                    const enumRaw = result.substring(0, commentIndexes.beforeStart).trim();
+                    const enumRaw = attributeTypeResult
+                        .substring(0, commentIndexes.beforeStart)
+                        .trim();
                     if (enumRaw) {
                         try {
                             enumValues = JSON.parse(enumRaw);
@@ -5105,16 +5036,16 @@ function dbToOpenApi(db) {
                             console.log(`Error parsing raw enum values: ${enumRaw} Message: ${JSON.stringify(error)}`);
                         }
                     }
-                    result = result.substring(firstSpaceIndex, lastSpaceIndex);
-                    if (result.indexOf(constants_1.formatKeyword) !== -1) {
-                        const formatIndex = result.indexOf(constants_1.formatKeyword);
-                        formatValue = result
+                    attributeTypeResult = attributeTypeResult.substring(firstSpaceIndex, lastSpaceIndex);
+                    if (attributeTypeResult.indexOf(constants_1.formatKeyword) !== -1) {
+                        const formatIndex = attributeTypeResult.indexOf(constants_1.formatKeyword);
+                        formatValue = attributeTypeResult
                             .substring(formatIndex + constants_1.formatKeyword.length)
                             .trim();
-                        result = result.substring(0, formatIndex);
+                        attributeTypeResult = attributeTypeResult.substring(0, formatIndex);
                     }
-                    if (result) {
-                        description = result;
+                    if (attributeTypeResult.trim()) {
+                        propertyDescription = attributeTypeResult.trim();
                     }
                     // decription = attribute.attributeType?.replace("/**", "").replace("*/", "");
                 }
@@ -5124,25 +5055,94 @@ function dbToOpenApi(db) {
                     if (enumValues) {
                         schema[schemaKey].enum = enumValues;
                     }
-                    if (description) {
-                        schema[schemaKey].description = description.trim();
+                    if (propertyDescription.trim()) {
+                        schema[schemaKey].description = propertyDescription.trim();
                     }
-                    if (formatValue) {
+                    if (formatValue.trim()) {
                         schema[schemaKey].format = formatValue.trim();
                     }
                     schema[schemaKey].type = type;
                 }
                 else {
+                    // check if type is jsonschema type
+                    let $ref = null;
+                    let removeType = false;
+                    let items = null;
+                    let additionalProperties = null;
+                    if (constants_nosql_1.validJSONSchemaTypes.indexOf(type) === -1) {
+                        if (type.indexOf("[]") != -1) {
+                            const itemsType = type.replace("[]", "");
+                            if (constants_nosql_1.validJSONSchemaTypes.indexOf(itemsType) != -1) {
+                                items = {
+                                    type: itemsType,
+                                };
+                                type = "array";
+                            }
+                        }
+                        if (constants_nosql_1.validJSONSchemaTypes.indexOf(type) != -1) {
+                            //
+                        }
+                        else {
+                            // else {
+                            removeType = true;
+                            $ref = `#/components/schemas/${(0, sharedUtils_1.RemoveNameQuantifiers)(type)}`;
+                        }
+                    }
+                    if (["array", "object"].indexOf(type) !== -1) {
+                        const relationships = db.getRelationships().filter(x => x.entityA == key);
+                        const roleLookup = `[${key}.${propName}]`;
+                        // FIND MATCH
+                        const rel = relationships.find(x => x.roleA.indexOf(roleLookup) != -1);
+                        if (rel) {
+                            const commentFKIndexes = (0, sharedUtils_1.getCommentIndexes)(rel.entityB);
+                            const entityBName = rel.entityB.substring(0, commentFKIndexes.beforeStart).trim();
+                            $ref = `#/components/schemas/${entityBName}`;
+                        }
+                        if ($ref) {
+                            // if array additionalProperties.$ref
+                            if (type == "array") {
+                                items = {
+                                    $ref: $ref
+                                };
+                            }
+                            // if object items.$ref
+                            if (type == "object") {
+                                additionalProperties = {
+                                    $ref: $ref
+                                };
+                            }
+                        }
+                    }
                     const property = {
-                        title: `${key}.${propName}`,
-                        nullable: (_g = (_f = attribute.attributeType) === null || _f === void 0 ? void 0 : _f.includes("nullable")) !== null && _g !== void 0 ? _g : false,
+                        title: `${schemaKey}.${propName}`,
                         type: type,
                     };
-                    if (description) {
-                        property.description = description.trim();
+                    if (additionalProperties) {
+                        property.additionalProperties = additionalProperties;
                     }
-                    if (formatValue) {
-                        property.format = formatValue.trim();
+                    if (items) {
+                        property.items = items;
+                    }
+                    if ((_f = attribute.attributeType) === null || _f === void 0 ? void 0 : _f.includes("nullable")) {
+                        property.nullable = true;
+                    }
+                    if ($ref && !(additionalProperties === null || additionalProperties === void 0 ? void 0 : additionalProperties.$ref) && !(items === null || items === void 0 ? void 0 : items.$ref)) {
+                        property["$ref"] = $ref;
+                    }
+                    if (removeType) {
+                        delete property.type;
+                    }
+                    // $ref properties don't have descriptions
+                    if (propertyDescription.trim() && !$ref) {
+                        // TODO: pull from proper location
+                        property.description = propertyDescription.trim();
+                    }
+                    if (formatValue.trim()) {
+                        if (property.items) {
+                            property.items.format = formatValue.trim();
+                        }
+                        else
+                            property.format = formatValue.trim();
                     }
                     schema[schemaKey].properties[attribute.attributeName] = property;
                 }
@@ -5155,15 +5155,32 @@ function dbToOpenApi(db) {
     result.components.schemas = schema;
     return result;
 }
-// TODO: may need to make recursive for when schema property items is array
+/**
+ * used in uml generation
+ * @param tableName
+ * @param propertyName
+ * @param property
+ * @returns
+ */
 function GeneratePropertyModel(tableName, propertyName, property) {
     var _a;
-    let columnProperties = ((_a = property.type) !== null && _a !== void 0 ? _a : "object").toString();
+    let columnProperties = ((_a = property.type) !== null && _a !== void 0 ? _a : constants_1.objectKeyword).toString();
+    if (columnProperties === constants_1.arrayKeyword) {
+        if (property.items && typeof property.items === constants_1.objectKeyword) {
+            if (property.items.format && !property.format) {
+                property.format = property.items.format;
+                // columnProperties = `${(property.items as JSONSchema4).format}[]`;
+            }
+            // else
+            if (property.items.type)
+                columnProperties = `${property.items.type}[]`;
+        }
+    }
     if (property.enum) {
         columnProperties = `${JSON.stringify(property.enum)}`;
     }
     else if (property.nullable) {
-        columnProperties += " nullable";
+        columnProperties += ` ${constants_1.nullableKeyword}`;
     }
     const description = (0, sharedUtils_1.generateComment)(property.description, property.format);
     if (description) {
@@ -5179,17 +5196,24 @@ function GeneratePropertyModel(tableName, propertyName, property) {
     };
     return result;
 }
+/**
+ * convert openapi schema to database model
+ * @param schemas
+ * @returns
+ */
 function ConvertOpenApiToDatabaseModel(schemas) {
-    var _a, _b, _c;
+    var _a, _b, _c, _d, _e, _f;
     const models = {
         Dialect: "nosql",
         TableList: [],
         PrimaryKeyList: [],
         ForeignKeyList: [],
     };
+    const tableDict = {};
     for (const key in schemas) {
         if (Object.prototype.hasOwnProperty.call(schemas, key)) {
             const schema = schemas[key];
+            const originalKey = (0, sharedUtils_1.dbTypeEnds)(key);
             const tableModel = {
                 Name: (0, sharedUtils_1.dbTypeEnds)(key),
                 Properties: [],
@@ -5197,7 +5221,7 @@ function ConvertOpenApiToDatabaseModel(schemas) {
             if (schema.enum) {
                 const enumList = schema.enum;
                 // serialize to string enum [values]
-                const propertyKey = `${schema.type} enum`;
+                const propertyKey = `${schema.type} ${constants_1.enumKeyword}`;
                 const property = {
                     enum: enumList,
                 };
@@ -5220,56 +5244,93 @@ function ConvertOpenApiToDatabaseModel(schemas) {
             for (const propertyKey in schema.properties) {
                 if (Object.prototype.hasOwnProperty.call(schema.properties, propertyKey)) {
                     const property = schema.properties[propertyKey];
-                    const propertyModel = GeneratePropertyModel(key, propertyKey, property);
-                    if (propertyModel.ColumnProperties.includes("object") ||
-                        propertyModel.ColumnProperties.includes("array")) {
-                        let refName = null;
-                        if (property.$ref) {
-                            refName = property.$ref.split("/").pop();
+                    // if note object or array use ref
+                    let refName = null;
+                    if (property.$ref) {
+                        refName = property.$ref.split("/").pop();
+                    }
+                    else if (property.items && typeof property.items == constants_1.objectKeyword) {
+                        refName = (_a = property.items.$ref) === null || _a === void 0 ? void 0 : _a.split("/").pop();
+                    }
+                    else if (property.additionalProperties &&
+                        typeof property.additionalProperties == "object") {
+                        refName = (_b = property.additionalProperties.$ref) === null || _b === void 0 ? void 0 : _b.split("/").pop();
+                    }
+                    if (refName) {
+                        const refSchema = schemas[refName];
+                        if (refSchema && !refSchema.enum) {
+                            const comment = (0, sharedUtils_1.generateComment)(refSchema.description, refSchema.format);
+                            if (comment) {
+                                refName = `${(0, sharedUtils_1.dbTypeEnds)(refName)} ${comment}`;
+                            }
+                            else {
+                                refName = (0, sharedUtils_1.dbTypeEnds)(refName);
+                            }
                         }
-                        else if (property.items && typeof property.items == "object") {
-                            refName = (_a = property.items.$ref) === null || _a === void 0 ? void 0 : _a.split("/").pop();
-                        }
-                        if (refName) {
-                            const primaryKeyModel = {
-                                PrimaryKeyTableName: (0, sharedUtils_1.dbTypeEnds)(key),
-                                ReferencesTableName: (0, sharedUtils_1.dbTypeEnds)(refName),
-                                PrimaryKeyName: (0, sharedUtils_1.dbTypeEnds)(propertyKey),
-                                // should just point to first property in uml table
-                                ReferencesPropertyName: "",
-                                IsDestination: false,
-                            };
-                            const foreignKeyModel = {
-                                ReferencesTableName: (0, sharedUtils_1.dbTypeEnds)(key),
-                                PrimaryKeyTableName: (0, sharedUtils_1.dbTypeEnds)(refName),
-                                ReferencesPropertyName: (0, sharedUtils_1.dbTypeEnds)(propertyKey),
-                                // should just point to first property in uml table
-                                PrimaryKeyName: "",
-                                IsDestination: true,
-                            };
-                            models.ForeignKeyList.push(foreignKeyModel);
-                            models.ForeignKeyList.push(primaryKeyModel);
-                            propertyModel.IsForeignKey = true;
+                        else {
+                            refName = (0, sharedUtils_1.dbTypeEnds)(refName);
                         }
                     }
+                    if (refName && !property.type) {
+                        property.type = refName;
+                    }
+                    const propertyModel = GeneratePropertyModel(tableModel.Name, propertyKey, property);
+                    // if (
+                    //   propertyModel.ColumnProperties.includes(objectKeyword) ||
+                    //   propertyModel.ColumnProperties.includes(arrayKeyword)
+                    // ) {
+                    if (refName) {
+                        const primaryKeyModel = {
+                            PrimaryKeyTableName: tableModel.Name,
+                            ReferencesTableName: refName,
+                            PrimaryKeyName: (0, sharedUtils_1.dbTypeEnds)(propertyKey),
+                            // should just point to first property in uml table
+                            ReferencesPropertyName: "",
+                            IsDestination: false,
+                        };
+                        const foreignKeyModel = {
+                            ReferencesTableName: tableModel.Name,
+                            PrimaryKeyTableName: refName,
+                            ReferencesPropertyName: (0, sharedUtils_1.dbTypeEnds)(propertyKey),
+                            // should just point to first property in uml table
+                            PrimaryKeyName: "",
+                            IsDestination: true,
+                        };
+                        models.ForeignKeyList.push(foreignKeyModel);
+                        models.ForeignKeyList.push(primaryKeyModel);
+                        propertyModel.IsForeignKey = true;
+                    }
+                    // }
                     tableModel.Properties.push(propertyModel);
                 }
             }
             models.TableList.push(tableModel);
+            // may no longer be needed
+            if (!tableDict[originalKey]) {
+                tableDict[originalKey] = tableModel;
+            }
         }
     }
     for (let i = 0; i < models.ForeignKeyList.length; i++) {
         const fk = models.ForeignKeyList[i];
         if (!fk.ReferencesPropertyName) {
             // match to first entry
-            const property = (_b = models.TableList.find((t) => t.Name == fk.ReferencesTableName)) === null || _b === void 0 ? void 0 : _b.Properties[0];
+            let property = (_c = models.TableList.find((t) => t.Name == fk.ReferencesTableName)) === null || _c === void 0 ? void 0 : _c.Properties[0];
+            if (!property) {
+                // attempt a comment lookup
+                property = (_d = tableDict[fk.ReferencesTableName]) === null || _d === void 0 ? void 0 : _d.Properties[0];
+            }
             if (property) {
                 models.ForeignKeyList[i].ReferencesPropertyName = property.Name;
             }
         }
         if (!fk.PrimaryKeyName) {
             // match to first entry
-            const property = (_c = models.TableList.find((t) => t.Name == fk.PrimaryKeyTableName)) === null || _c === void 0 ? void 0 : _c.Properties[0];
+            let property = (_e = models.TableList.find((t) => t.Name == fk.PrimaryKeyTableName)) === null || _e === void 0 ? void 0 : _e.Properties[0];
+            if (!property) {
+                // attempt a comment lookup
+                property = (_f = tableDict[fk.PrimaryKeyTableName]) === null || _f === void 0 ? void 0 : _f.Properties[0];
+            }
             if (property) {
                 models.ForeignKeyList[i].PrimaryKeyName = property.Name;
             }
@@ -5278,7 +5339,7 @@ function ConvertOpenApiToDatabaseModel(schemas) {
     return models;
 }
 
-},{"./constants":29,"./sharedUtils":31}],31:[function(require,module,exports){
+},{"./constants":30,"./constants-nosql":29,"./sharedUtils":32}],32:[function(require,module,exports){
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.GetColumnQuantifiers = GetColumnQuantifiers;
@@ -5291,6 +5352,7 @@ exports.getCommentIndexes = getCommentIndexes;
 exports.getMermaidDiagramDb = getMermaidDiagramDb;
 exports.GenerateDatabaseModel = GenerateDatabaseModel;
 exports.generateComment = generateComment;
+exports.CreateTableUI = CreateTableUI;
 const constants_1 = require("./constants");
 /**
  * return text quantifiers for dialect
@@ -5298,8 +5360,8 @@ const constants_1 = require("./constants");
  */
 function GetColumnQuantifiers(type) {
     const chars = {
-        Start: "\"",
-        End: "\"",
+        Start: '"',
+        End: '"',
     };
     if (type && ["mysql", "ts", "openapi"].includes(type)) {
         chars.Start = "`";
@@ -5323,6 +5385,11 @@ function removeHtml(label) {
     tempDiv.remove();
     return text;
 }
+/**
+ * add db ends
+ * @param label
+ * @returns
+ */
 function dbTypeEnds(label) {
     const char1 = "`";
     const char2 = "`";
@@ -5332,6 +5399,11 @@ function dbTypeEnds(label) {
     // }
     return `${char1}${label}${char2}`;
 }
+/**
+ * remove name quantifiers
+ * @param name
+ * @returns
+ */
 function RemoveNameQuantifiers(name) {
     return name.replace(/\[|\]|\(|\"|\'|\`/g, "").trim();
 }
@@ -5363,7 +5435,7 @@ function entityName(description, format) {
         result += `${description}`;
     }
     if (format) {
-        result += ` @format ${format}`;
+        result += ` ${constants_1.formatKeyword} ${format}`;
     }
     if (result) {
         result = result.trim();
@@ -5373,16 +5445,24 @@ function entityName(description, format) {
 }
 function getCommentIndexes(result) {
     let hasComment = false;
-    if (result.indexOf(constants_1.commentColumnQuantifiers.Start) !== -1 && result.indexOf(constants_1.commentColumnQuantifiers.End) !== -1) {
+    if (result.indexOf(constants_1.commentColumnQuantifiers.Start) !== -1 &&
+        result.indexOf(constants_1.commentColumnQuantifiers.End) !== -1) {
         hasComment = true;
     }
-    const beforeIndex = hasComment ? result.indexOf(constants_1.commentColumnQuantifiers.Start) : -1;
-    const firstSpaceIndex = hasComment ? result.indexOf(constants_1.commentColumnQuantifiers.Start) + constants_1.commentColumnQuantifiers.Start.length : -1;
-    const lastSpaceIndex = hasComment ? result.indexOf(constants_1.commentColumnQuantifiers.End) - 1 : -1;
+    const beforeIndex = hasComment
+        ? result.indexOf(constants_1.commentColumnQuantifiers.Start)
+        : -1;
+    const firstSpaceIndex = hasComment
+        ? result.indexOf(constants_1.commentColumnQuantifiers.Start) +
+            constants_1.commentColumnQuantifiers.Start.length
+        : -1;
+    const lastSpaceIndex = hasComment
+        ? result.indexOf(constants_1.commentColumnQuantifiers.End) - 1
+        : -1;
     return {
         beforeStart: beforeIndex,
         start: firstSpaceIndex,
-        end: lastSpaceIndex
+        end: lastSpaceIndex,
     };
 }
 /**
@@ -5399,6 +5479,7 @@ function getMermaidDiagramDb(ui, type) {
     const relationships = [];
     // TODO: support for ts and openapi enum
     // build models
+    // fix fk for comments
     for (const key in model.cells) {
         if (Object.hasOwnProperty.call(model.cells, key)) {
             const mxcell = model.cells[key];
@@ -5417,7 +5498,9 @@ function getMermaidDiagramDb(ui, type) {
                         result = result.substring(firstSpaceIndex, lastSpaceIndex);
                         if (result.indexOf(constants_1.formatKeyword) !== -1) {
                             const formatIndex = result.indexOf(constants_1.formatKeyword);
-                            formatValue = result.substring(formatIndex + constants_1.formatKeyword.length).trim();
+                            formatValue = result
+                                .substring(formatIndex + constants_1.formatKeyword.length)
+                                .trim();
                             result = result.substring(0, formatIndex);
                         }
                         if (result) {
@@ -5431,22 +5514,23 @@ function getMermaidDiagramDb(ui, type) {
                     };
                     const comment = generateComment(description, formatValue);
                     if (comment) {
-                        entity.name += comment;
+                        entity.name += ` ${comment}`;
                     }
-                    // const comment = 
+                    // const comment =
                     for (let c = 0; c < mxcell.children.length; c++) {
                         const col = mxcell.children[c];
                         if (col.mxObjectId.indexOf("mxCell") !== -1) {
-                            if (col.style && col.style.trim().startsWith("shape=partialRectangle")) {
+                            if (col.style &&
+                                col.style.trim().startsWith("shape=partialRectangle")) {
                                 const columnQuantifiers = GetColumnQuantifiers(type);
                                 //Get delimiter of column name
                                 //Get full name
                                 const attribute = getDbLabel(col.value, columnQuantifiers);
-                                const attributeKeyType = col.children.find(x => ["FK", "PK"].findIndex(k => k == x.value.toUpperCase()) !== -1 ||
-                                    x.value.toUpperCase().indexOf("PK,") != -1);
+                                const attributeKeyType = col.children.find((x) => ["FK", "PK"].findIndex((k) => k == x.value.toUpperCase()) !== -1 || x.value.toUpperCase().indexOf("PK,") != -1);
                                 if (attributeKeyType) {
                                     attribute.attributeKeyType = attributeKeyType.value;
-                                    if (attribute.attributeKeyType != "PK" && attribute.attributeKeyType.indexOf("PK") != -1) {
+                                    if (attribute.attributeKeyType != "PK" &&
+                                        attribute.attributeKeyType.indexOf("PK") != -1) {
                                         attribute.attributeKeyType = "PK";
                                     }
                                 }
@@ -5456,53 +5540,106 @@ function getMermaidDiagramDb(ui, type) {
                                     for (let e = 0; e < col.edges.length; e++) {
                                         const edge = col.edges[e];
                                         if (edge.mxObjectId.indexOf("mxCell") !== -1) {
-                                            if (edge.style && edge.style.indexOf("endArrow=") != -1 && edge.source &&
-                                                edge.source.value && edge.target && edge.target.value) {
+                                            if (edge.style &&
+                                                edge.style.indexOf("endArrow=") != -1 &&
+                                                edge.source &&
+                                                edge.source.value &&
+                                                edge.target &&
+                                                edge.target.value) {
                                                 // need to check if end is open or certain value to determin relationship type
                                                 // extract endArrow txt
                                                 // check if both match and contain many or open
                                                 // if both match and are many then create a new table
                                                 const endCheck = "endArrow=";
-                                                const endArr = edge.style.indexOf(endCheck) != -1 ?
-                                                    edge.style.substring(edge.style.indexOf(endCheck) + endCheck.length, edge.style.substring(edge.style.indexOf(endCheck) + endCheck.length).indexOf(";") + edge.style.indexOf(endCheck) + endCheck.length)
+                                                const endArr = edge.style.indexOf(endCheck) != -1
+                                                    ? edge.style.substring(edge.style.indexOf(endCheck) + endCheck.length, edge.style
+                                                        .substring(edge.style.indexOf(endCheck) +
+                                                        endCheck.length)
+                                                        .indexOf(";") +
+                                                        edge.style.indexOf(endCheck) +
+                                                        endCheck.length)
                                                     : "";
                                                 const startCheck = "startArrow=";
-                                                const startArr = edge.style.indexOf(startCheck) != -1 ?
-                                                    edge.style.substring(edge.style.indexOf(startCheck) + startCheck.length, edge.style.substring(edge.style.indexOf(startCheck) + startCheck.length).indexOf(";") + edge.style.indexOf(startCheck) + startCheck.length)
+                                                const startArr = edge.style.indexOf(startCheck) != -1
+                                                    ? edge.style.substring(edge.style.indexOf(startCheck) +
+                                                        startCheck.length, edge.style
+                                                        .substring(edge.style.indexOf(startCheck) +
+                                                        startCheck.length)
+                                                        .indexOf(";") +
+                                                        edge.style.indexOf(startCheck) +
+                                                        startCheck.length)
                                                     : "";
                                                 const manyCheck = ["open", "many"];
-                                                const sourceIsPrimary = endArr && manyCheck
-                                                    .findIndex(x => endArr.toLocaleLowerCase().indexOf(x) != -1) != -1;
-                                                const targetIsPrimary = startArr && manyCheck
-                                                    .findIndex(x => startArr.toLocaleLowerCase().indexOf(x) != -1) != -1;
+                                                const sourceIsPrimary = endArr &&
+                                                    manyCheck.findIndex((x) => endArr.toLocaleLowerCase().indexOf(x) != -1) != -1;
+                                                const targetIsPrimary = startArr &&
+                                                    manyCheck.findIndex((x) => startArr.toLocaleLowerCase().indexOf(x) != -1) != -1;
                                                 // has to be one to many and not one to one
                                                 if ((targetIsPrimary || sourceIsPrimary) &&
                                                     !(targetIsPrimary && sourceIsPrimary)) {
                                                     let sourceId = edge.source.value;
                                                     const sourceAttr = getDbLabel(sourceId, columnQuantifiers);
                                                     sourceId = sourceAttr.attributeName;
-                                                    const sourceEntity = RemoveNameQuantifiers(edge.source.parent.value);
+                                                    let sourceEntity = edge.source.parent.value;
+                                                    // extract comments
+                                                    let commentsIndexes = getCommentIndexes(sourceEntity);
+                                                    if (commentsIndexes.start != -1 &&
+                                                        commentsIndexes.end != -1) {
+                                                        const sourceComment = sourceEntity
+                                                            .substring(commentsIndexes.start, commentsIndexes.end)
+                                                            .trim();
+                                                        sourceEntity = sourceEntity
+                                                            .substring(0, commentsIndexes.beforeStart)
+                                                            .trim();
+                                                        sourceEntity = `${RemoveNameQuantifiers(sourceEntity)} ${generateComment(sourceComment)}`;
+                                                    }
+                                                    else {
+                                                        sourceEntity = RemoveNameQuantifiers(sourceEntity);
+                                                    }
                                                     let targetId = edge.target.value;
                                                     const targetAttr = getDbLabel(targetId, columnQuantifiers);
                                                     targetId = targetAttr.attributeName;
-                                                    const targetEntity = RemoveNameQuantifiers(edge.target.parent.value);
+                                                    let targetEntity = edge.target.parent.value;
+                                                    commentsIndexes = getCommentIndexes(targetEntity);
+                                                    if (commentsIndexes.start != -1 &&
+                                                        commentsIndexes.end != -1) {
+                                                        const targetComment = targetEntity
+                                                            .substring(commentsIndexes.start, commentsIndexes.end)
+                                                            .trim();
+                                                        targetEntity = targetEntity
+                                                            .substring(0, commentsIndexes.beforeStart)
+                                                            .trim();
+                                                        targetEntity = `${RemoveNameQuantifiers(targetEntity)} ${generateComment(targetComment)}`;
+                                                    }
+                                                    else {
+                                                        targetEntity = RemoveNameQuantifiers(targetEntity);
+                                                    }
+                                                    // const targetEntity = RemoveNameQuantifiers(
+                                                    //   edge.target.parent.value
+                                                    // );
                                                     // entityA primary
                                                     // entityB foreign
                                                     const relationship = {
-                                                        entityA: sourceIsPrimary ? sourceEntity : targetEntity,
-                                                        entityB: sourceIsPrimary ? targetEntity : sourceEntity,
+                                                        entityA: sourceIsPrimary
+                                                            ? sourceEntity
+                                                            : targetEntity,
+                                                        entityB: sourceIsPrimary
+                                                            ? targetEntity
+                                                            : sourceEntity,
                                                         // based off of styles?
                                                         relSpec: {
                                                             cardA: "ZERO_OR_MORE",
                                                             cardB: "ONLY_ONE",
-                                                            relType: "IDENTIFYING"
+                                                            relType: "IDENTIFYING",
                                                         },
-                                                        roleA: sourceIsPrimary ?
-                                                            `[${sourceEntity}.${sourceId}] to [${targetEntity}.${targetId}]` :
-                                                            `[${targetEntity}.${targetId}] to [${sourceEntity}.${sourceId}]`
+                                                        roleA: sourceIsPrimary
+                                                            ? `[${sourceEntity}.${sourceId}] to [${targetEntity}.${targetId}]`
+                                                            : `[${targetEntity}.${targetId}] to [${sourceEntity}.${sourceId}]`,
                                                     };
                                                     // check that is doesn't already exist
-                                                    const exists = relationships.findIndex(r => r.entityA == relationship.entityA && r.entityB == relationship.entityB && r.roleA == relationship.roleA);
+                                                    const exists = relationships.findIndex((r) => r.entityA == relationship.entityA &&
+                                                        r.entityB == relationship.entityB &&
+                                                        r.roleA == relationship.roleA);
                                                     if (exists == -1) {
                                                         relationships.push(relationship);
                                                     }
@@ -5520,8 +5657,10 @@ function getMermaidDiagramDb(ui, type) {
                                                     targetId = targetAttr.attributeName;
                                                     const targetEntity = RemoveNameQuantifiers(edge.target.parent.value);
                                                     const compositeEntity = {
-                                                        name: RemoveNameQuantifiers(sourceEntity) + "_" + RemoveNameQuantifiers(targetEntity),
-                                                        attributes: [sourceAttr, targetAttr]
+                                                        name: RemoveNameQuantifiers(sourceEntity) +
+                                                            "_" +
+                                                            RemoveNameQuantifiers(targetEntity),
+                                                        attributes: [sourceAttr, targetAttr],
                                                     };
                                                     // add composite entity
                                                     if (entities[compositeEntity.name]) {
@@ -5539,12 +5678,14 @@ function getMermaidDiagramDb(ui, type) {
                                                         relSpec: {
                                                             cardA: "ZERO_OR_MORE",
                                                             cardB: "ONLY_ONE",
-                                                            relType: "IDENTIFYING"
+                                                            relType: "IDENTIFYING",
                                                         },
-                                                        roleA: `[${sourceEntity}.${sourceId}] to [${compositeEntity.name}.${sourceId}]`
+                                                        roleA: `[${sourceEntity}.${sourceId}] to [${compositeEntity.name}.${sourceId}]`,
                                                     };
                                                     // check that is doesn't already exist
-                                                    let exists = relationships.findIndex(r => r.entityA == relationship.entityA && r.entityB == relationship.entityB && r.roleA == relationship.roleA);
+                                                    let exists = relationships.findIndex((r) => r.entityA == relationship.entityA &&
+                                                        r.entityB == relationship.entityB &&
+                                                        r.roleA == relationship.roleA);
                                                     if (exists == -1) {
                                                         relationships.push(relationship);
                                                     }
@@ -5555,12 +5696,14 @@ function getMermaidDiagramDb(ui, type) {
                                                         relSpec: {
                                                             cardA: "ZERO_OR_MORE",
                                                             cardB: "ONLY_ONE",
-                                                            relType: "IDENTIFYING"
+                                                            relType: "IDENTIFYING",
                                                         },
-                                                        roleA: `[${targetEntity}.${targetId}] to [${compositeEntity.name}.${targetId}]`
+                                                        roleA: `[${targetEntity}.${targetId}] to [${compositeEntity.name}.${targetId}]`,
                                                     };
                                                     // check that is doesn't already exist
-                                                    exists = relationships.findIndex(r => r.entityA == relationship2.entityA && r.entityB == relationship2.entityB && r.roleA == relationship2.roleA);
+                                                    exists = relationships.findIndex((r) => r.entityA == relationship2.entityA &&
+                                                        r.entityB == relationship2.entityB &&
+                                                        r.roleA == relationship2.roleA);
                                                     if (exists == -1) {
                                                         relationships.push(relationship2);
                                                     }
@@ -5590,6 +5733,12 @@ function getMermaidDiagramDb(ui, type) {
     const db = GenerateDatabaseModel(entities, relationships);
     return db;
 }
+/**
+ * genearte a database model
+ * @param entities
+ * @param relationships
+ * @returns
+ */
 function GenerateDatabaseModel(entities, relationships) {
     class DatabaseModel {
         constructor(entities, relationships) {
@@ -5606,13 +5755,19 @@ function GenerateDatabaseModel(entities, relationships) {
     const db = new DatabaseModel(entities, relationships);
     return db;
 }
+/**
+ * generate a comment using description and format
+ * @param description
+ * @param formatValue
+ * @returns
+ */
 function generateComment(description, formatValue) {
     let result = "";
     if (description) {
         result += `${description}`;
     }
     if (formatValue) {
-        result += ` @format ${formatValue}`;
+        result += ` ${constants_1.formatKeyword} ${formatValue}`;
     }
     if (result) {
         result = result.trim();
@@ -5620,5 +5775,174 @@ function generateComment(description, formatValue) {
     }
     return result;
 }
+/**
+ * create uml tables from db models
+ * @param ui
+ * @param wndFromInput
+ * @param tableList
+ * @param cells
+ * @param rowCell
+ * @param tableCell
+ * @param foreignKeyList
+ * @param dx
+ * @param type
+ * @returns
+ */
+function CreateTableUI(ui, wndFromInput, tableList, cells, rowCell, tableCell, foreignKeyList, dx, type) {
+    tableList.forEach(function (tableModel) {
+        //Define table size width
+        const maxNameLenght = 100 + tableModel.Name.length;
+        //Create Table
+        tableCell = new mxCell(tableModel.Name, new mxGeometry(dx, 0, maxNameLenght, 26), "swimlane;fontStyle=0;childLayout=stackLayout;horizontal=1;startSize=26;fillColor=default;horizontalStack=0;resizeParent=1;resizeLast=0;collapsible=1;marginBottom=0;swimlaneFillColor=default;align=center;");
+        tableCell.vertex = true;
+        //Resize row
+        if (rowCell) {
+            const size = ui.editor.graph.getPreferredSizeForCell(rowCell);
+            if (size !== null) {
+                tableCell.geometry.width = size.width + maxNameLenght;
+            }
+        }
+        //Add Table to cells
+        cells.push(tableCell);
+        //Add properties
+        tableModel.Properties.forEach(function (propertyModel) {
+            //Add row
+            const addRowResult = AddRow(ui, propertyModel, tableModel.Name, rowCell, tableCell);
+            if (addRowResult) {
+                rowCell = addRowResult.rowCell;
+                tableCell = addRowResult.tableCell;
+            }
+        });
+        //Close table
+        dx += tableCell.geometry.width + 40;
+        tableCell = null;
+    });
+    if (cells.length > 0) {
+        const graph = ui.editor.graph;
+        const view = graph.view;
+        const bds = graph.getGraphBounds();
+        // Computes unscaled, untranslated graph bounds
+        const x = Math.ceil(Math.max(0, bds.x / view.scale - view.translate.x) + 4 * graph.gridSize);
+        const y = Math.ceil(Math.max(0, (bds.y + bds.height) / view.scale - view.translate.y) +
+            4 * graph.gridSize);
+        graph.setSelectionCells(graph.importCells(cells, x, y));
+        // add foreign key edges
+        const model = graph.getModel();
+        const columnQuantifiers = GetColumnQuantifiers(type);
+        // const pt = graph.getFreeInsertPoint();
+        foreignKeyList.forEach(function (fk) {
+            if (fk.IsDestination &&
+                fk.PrimaryKeyName &&
+                fk.ReferencesPropertyName &&
+                fk.PrimaryKeyTableName &&
+                fk.ReferencesTableName) {
+                const insertEdge = mxUtils.bind(this, function (targetCell, sourceCell, edge) {
+                    const label = "";
+                    const edgeStyle = "edgeStyle=entityRelationEdgeStyle;html=1;endArrow=ERzeroToMany;startArrow=ERzeroToOne;labelBackgroundColor=none;fontFamily=Verdana;fontSize=14;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=-0.018;entryY=0.608;entryDx=0;entryDy=0;entryPerimeter=0;";
+                    const edgeCell = graph.insertEdge(null, null, label || "", edge.invert ? sourceCell : targetCell, edge.invert ? targetCell : sourceCell, edgeStyle);
+                });
+                const edge = {
+                    invert: true,
+                };
+                let targetCell = null;
+                let sourceCell = null;
+                // locate edge source and target cells
+                for (const key in model.cells) {
+                    if (targetCell && sourceCell)
+                        break;
+                    if (Object.hasOwnProperty.call(model.cells, key)) {
+                        const mxcell = model.cells[key];
+                        if (mxcell.style && mxcell.style.trim().startsWith("swimlane;")) {
+                            const entity = {
+                                name: mxcell.value,
+                                attributes: [],
+                            };
+                            const isPrimaryTable = entity.name == fk.PrimaryKeyTableName;
+                            const isForeignTable = entity.name == fk.ReferencesTableName;
+                            if (isPrimaryTable || isForeignTable) {
+                                for (let c = 0; c < mxcell.children.length; c++) {
+                                    if (targetCell && sourceCell)
+                                        break;
+                                    const col = mxcell.children[c];
+                                    if (col.mxObjectId.indexOf("mxCell") !== -1) {
+                                        if (col.style &&
+                                            col.style.trim().startsWith("shape=partialRectangle")) {
+                                            const attribute = getDbLabel(col.value, columnQuantifiers);
+                                            if (isPrimaryTable &&
+                                                dbTypeEnds(attribute.attributeName) == fk.PrimaryKeyName) {
+                                                targetCell = col;
+                                                // allow recursion
+                                            }
+                                            if (isForeignTable &&
+                                                dbTypeEnds(attribute.attributeName) ==
+                                                    fk.ReferencesPropertyName) {
+                                                sourceCell = col;
+                                            }
+                                            if (targetCell && sourceCell)
+                                                break;
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+                if (targetCell && sourceCell)
+                    insertEdge(targetCell, sourceCell, edge);
+            }
+        });
+        graph.scrollCellToVisible(graph.getSelectionCell());
+    }
+    wndFromInput.setVisible(false);
+    return {
+        cells,
+        rowCell,
+        tableCell,
+        dx,
+    };
+}
+/**
+ * add row to uml table
+ * @param ui
+ * @param propertyModel
+ * @param tableName
+ * @param rowCell
+ * @param tableCell
+ * @returns
+ */
+function AddRow(ui, propertyModel, tableName, rowCell, tableCell) {
+    const cellName = propertyModel.Name +
+        (propertyModel.ColumnProperties
+            ? " " + propertyModel.ColumnProperties
+            : "");
+    rowCell = new mxCell(cellName, new mxGeometry(0, 0, 90, 26), "shape=partialRectangle;top=0;left=0;right=0;bottom=0;align=left;verticalAlign=top;spacingTop=-2;fillColor=none;spacingLeft=64;spacingRight=4;overflow=hidden;rotatable=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;dropTarget=0;");
+    rowCell.vertex = true;
+    const columnType = propertyModel.IsPrimaryKey && propertyModel.IsForeignKey
+        ? "PK | FK"
+        : propertyModel.IsPrimaryKey
+            ? "PK"
+            : propertyModel.IsForeignKey
+                ? "FK"
+                : "";
+    const left = sb.cloneCell(rowCell, columnType);
+    left.connectable = false;
+    left.style =
+        "shape=partialRectangle;top=0;left=0;bottom=0;fillColor=none;align=left;verticalAlign=middle;spacingLeft=4;spacingRight=4;overflow=hidden;rotatable=180;points=[];portConstraint=eastwest;part=1;";
+    left.geometry.width = 54;
+    left.geometry.height = 26;
+    rowCell.insert(left);
+    const size = ui.editor.graph.getPreferredSizeForCell(rowCell);
+    if (tableCell) {
+        if (size !== null && tableCell.geometry.width < size.width + 10) {
+            tableCell.geometry.width = size.width + 10;
+        }
+        tableCell.insert(rowCell);
+        tableCell.geometry.height += 26;
+    }
+    return {
+        rowCell,
+        tableCell,
+    };
+}
 
-},{"./constants":29}]},{},[28]);
+},{"./constants":30}]},{},[28]);
