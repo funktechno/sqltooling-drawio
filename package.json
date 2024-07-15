@@ -68,7 +68,7 @@
     "babel-preset-es2016": "^6.24.1",
     "babelify": "^10.0.0",
     "browserify": "^17.0.0",
-    "eslint": "^9.6.0",
+    "eslint": "^9.7.0",
     "globals": "^15.8.0",
     "gulp": "^5.0.0",
     "gulp-rename": "^2.0.0",
