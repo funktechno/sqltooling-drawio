@@ -75,7 +75,7 @@ export function dbTypeEnds(label: string): string {
  * @returns
  */
 export function RemoveNameQuantifiers(name: string) {
-  return name.replace(/\[|\]|\(|\"|\'|\`/g, "").trim();
+  return name.replace(/\[|\]|\(|\)|\"|\'|\`/g, "").trim();
 }
 
 /**
