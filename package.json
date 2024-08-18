@@ -80,7 +80,7 @@
     "jest-environment-jsdom": "^29.7.0",
     "jest-junit": "^16.0.0",
     "jest-serial-runner": "^1.1.0",
-    "ts-jest": "^29.0.1",
+    "ts-jest": "^29.2.4",
     "ts-node": "^10.9.1",
     "tsify": "^5.0.4",
     "typeconv": "^1.8.0",
