@@ -1,5 +1,4 @@
 import {
-  DbDefinition,
   DbRelationshipDefinition,
 } from "@funktechno/little-mermaid-2-the-sql/lib/src/types";
 import {

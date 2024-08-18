@@ -4,10 +4,9 @@ import {
   GeneratePropertyModel,
   ConvertOpenApiToDatabaseModel,
 } from "../../src/utils/nosqlUtils";
-import { JSONSchema4, JSONSchema4TypeName } from "json-schema";
+import { JSONSchema4 } from "json-schema";
 import {
   OpenApiSchemaTypeDefinition,
-  PartialOpenApiSchema,
 } from "openapi-json-schema";
 import {
   DatabaseModelResult,

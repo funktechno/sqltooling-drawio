@@ -13,14 +13,6 @@ import {
 } from "../../src/utils/sharedUtils";
 import { multiAssert } from "../helpers";
 import {
-  DatabaseModelResult,
-  TableAttribute,
-} from "../../src/types/sql-plugin-types";
-import {
-  DbDefinition,
-  DbEntityAttributesDefinition,
-  DbEntityDefinition,
-  DbRelSpec,
   DbRelationshipDefinition,
 } from "@funktechno/little-mermaid-2-the-sql/lib/src/types";
 

@@ -1,4 +1,3 @@
-import { DbDefinition } from "@funktechno/little-mermaid-2-the-sql/lib/src/types";
 import {
   OpenApiSchemaTypeDefinition,
   PartialOpenApiSchema,
@@ -14,15 +13,12 @@ import {
 } from "./constants";
 import { JSONSchema4, JSONSchema4TypeName } from "json-schema";
 import {
-  ColumnQuantifiers,
   DatabaseModelResult,
 } from "../types/sql-plugin-types";
 import {
   dbTypeEnds,
   generateComment,
-  GetColumnQuantifiers,
   getCommentIndexes,
-  getDbLabel,
   RemoveNameQuantifiers,
 } from "./sharedUtils";
 import {
