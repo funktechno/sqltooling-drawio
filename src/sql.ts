@@ -1,21 +1,15 @@
 import { DbParser } from "@funktechno/little-mermaid-2-the-sql/lib/src/generate-sql-ddl";
 import {
   DbDefinition,
-  DbRelationshipDefinition,
 } from "@funktechno/little-mermaid-2-the-sql/lib/src/types";
-import { TableAttribute, TableEntity } from "./types/sql-plugin-types";
 import { SqlSimpleParser } from "@funktechno/sqlsimpleparser";
 import {
   ForeignKeyModel,
   PrimaryKeyModel,
-  PropertyModel,
   TableModel,
 } from "@funktechno/sqlsimpleparser/lib/types";
 import {
   CreateTableUI,
-  GetColumnQuantifiers,
-  RemoveNameQuantifiers,
-  getDbLabel,
   getMermaidDiagramDb,
 } from "./utils/sharedUtils";
 import { pluginVersion } from "./utils/constants";
