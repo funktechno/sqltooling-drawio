@@ -15,6 +15,7 @@ export default [
       "@typescript-eslint/no-unsafe-function-type": "off",
       "@typescript-eslint/no-explicit-any": "off",
       "no-useless-escape": "off",
+      "no-control-regex": "off",
       "no-multiple-empty-lines": "error",
       "no-use-before-define": "off",
       "@typescript-eslint/no-non-null-assertion": "off",
@@ -32,9 +33,9 @@ export default [
   },
   {
     files: ["**/__tests__/*.{j,t}s?(x)", "**/tests/**/*.spec.{j,t}s?(x)"],
-    env: {
-      jest: true,
-    },
+    // env: {
+    //   jest: true,
+    // },
   },
   { languageOptions: { globals: globals.browser } }
 ];

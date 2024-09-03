@@ -1,16 +1,8 @@
 import {
-  DbDefinition,
-  DbRelationshipDefinition,
-} from "@funktechno/little-mermaid-2-the-sql/lib/src/types";
-import { TableAttribute, TableEntity } from "./types/sql-plugin-types";
-import {
-  DatabaseModel,
   ForeignKeyModel,
   PrimaryKeyModel,
-  PropertyModel,
   TableModel,
 } from "@funktechno/sqlsimpleparser/lib/types";
-import { JSONSchema4, JSONSchema4TypeName } from "json-schema";
 import {
   convertCoreTypesToJsonSchema,
   convertOpenApiToCoreTypes,
@@ -22,17 +14,12 @@ import {
 } from "openapi-json-schema";
 import {
   CreateTableUI,
-  GetColumnQuantifiers,
-  RemoveNameQuantifiers,
-  dbTypeEnds,
-  getDbLabel,
   getMermaidDiagramDb,
 } from "./utils/sharedUtils";
 import { pluginVersion } from "./utils/constants";
 import {
   ConvertOpenApiToDatabaseModel,
   dbToOpenApi,
-  GeneratePropertyModel,
 } from "./utils/nosqlUtils";
 import { defaultResetOpenApi } from "./utils/constants-nosql";
 

@@ -1,5 +1,4 @@
 import {
-  DbDefinition,
   DbRelationshipDefinition,
 } from "@funktechno/little-mermaid-2-the-sql/lib/src/types";
 import {
@@ -75,7 +74,7 @@ export function dbTypeEnds(label: string): string {
  * @returns
  */
 export function RemoveNameQuantifiers(name: string) {
-  return name.replace(/\[|\]|\(|\"|\'|\`/g, "").trim();
+  return name.replace(/\[|\]|\(|\)|\"|\'|\`/g, "").trim();
 }
 
 /**
