@@ -12,6 +12,7 @@ export interface TableEntity {
 
 export interface TableAttribute {
   attributeType: string;
+  attributeComment?: string | null;
   attributeName: string;
   attributeKeyType?: string;
   // "PK" | "FK"

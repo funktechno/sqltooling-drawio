@@ -1,5 +1,4 @@
 import {
-  DbDefinition,
   DbRelationshipDefinition,
 } from "@funktechno/little-mermaid-2-the-sql/lib/src/types";
 import {
@@ -75,7 +74,7 @@ export function dbTypeEnds(label: string): string {
  * @returns
  */
 export function RemoveNameQuantifiers(name: string) {
-  return name.replace(/\[|\]|\(|\"|\'|\`/g, "").trim();
+  return name.replace(/\[|\]|\(|\)|\"|\'|\`/g, "").trim();
 }
 
 /**
@@ -96,13 +95,21 @@ export function getDbLabel(
     result.indexOf(columnQuantifiers.End + " ") !== -1
       ? result.indexOf(columnQuantifiers.End + " ")
       : result.indexOf(" ");
-  const attributeType = result.substring(firstSpaceIndex + 1).trim();
+  let attributeType = result.substring(firstSpaceIndex + 1).trim();
   const attributeName = RemoveNameQuantifiers(
     result.substring(0, firstSpaceIndex + 1)
   );
+  const attributesTypes = attributeType.split(" ");
+  let attributeComment: string | null = null;
+  if (attributesTypes.length > 1) {
+    attributeComment = attributesTypes.slice(1).join(' ');
+    attributeType = attributesTypes[0];
+  }
+
   const attribute = {
     attributeName,
     attributeType,
+    attributeComment,
   };
   return attribute;
 }
@@ -647,6 +654,23 @@ export function CreateTableUI(
     // add foreign key edges
     const model = graph.getModel();
     const columnQuantifiers = GetColumnQuantifiers(type);
+
+    const insertEdge = mxUtils.bind(
+      this,
+      function (targetCell, sourceCell, edge) {
+        const label = "";
+        const edgeStyle =
+          "edgeStyle=entityRelationEdgeStyle;html=1;endArrow=ERzeroToMany;startArrow=ERzeroToOne;labelBackgroundColor=none;fontFamily=Verdana;fontSize=14;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=-0.018;entryY=0.608;entryDx=0;entryDy=0;entryPerimeter=0;";
+        const edgeCell = graph.insertEdge(
+          null,
+          null,
+          label || "",
+          edge.invert ? sourceCell : targetCell,
+          edge.invert ? targetCell : sourceCell,
+          edgeStyle
+        );
+      }
+    );
     // const pt = graph.getFreeInsertPoint();
     foreignKeyList.forEach(function (fk) {
       if (
@@ -656,22 +680,6 @@ export function CreateTableUI(
         fk.PrimaryKeyTableName &&
         fk.ReferencesTableName
       ) {
-        const insertEdge = mxUtils.bind(
-          this,
-          function (targetCell, sourceCell, edge) {
-            const label = "";
-            const edgeStyle =
-              "edgeStyle=entityRelationEdgeStyle;html=1;endArrow=ERzeroToMany;startArrow=ERzeroToOne;labelBackgroundColor=none;fontFamily=Verdana;fontSize=14;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=-0.018;entryY=0.608;entryDx=0;entryDy=0;entryPerimeter=0;";
-            const edgeCell = graph.insertEdge(
-              null,
-              null,
-              label || "",
-              edge.invert ? sourceCell : targetCell,
-              edge.invert ? targetCell : sourceCell,
-              edgeStyle
-            );
-          }
-        );
         const edge = {
           invert: true,
         };
@@ -704,15 +712,15 @@ export function CreateTableUI(
                       );
                       if (
                         isPrimaryTable &&
-                        dbTypeEnds(attribute.attributeName) == fk.PrimaryKeyName
+                        RemoveNameQuantifiers(attribute.attributeName) == RemoveNameQuantifiers(fk.PrimaryKeyName)
                       ) {
                         targetCell = col;
                         // allow recursion
                       }
                       if (
                         isForeignTable &&
-                        dbTypeEnds(attribute.attributeName) ==
-                          fk.ReferencesPropertyName
+                        RemoveNameQuantifiers(attribute.attributeName) ==
+                          RemoveNameQuantifiers(fk.ReferencesPropertyName)
                       ) {
                         sourceCell = col;
                       }
