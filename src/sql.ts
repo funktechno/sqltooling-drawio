@@ -154,10 +154,10 @@ Draw.loadPlugin(function (ui) {
   const sqlInputFromSQL = document.createElement("textarea");
   sqlInputFromSQL.style.height = "200px";
   sqlInputFromSQL.style.width = "100%";
-  const defaultReset = `/*\n\tDrawio default value\n\tPlugin: sql\n\tVersion: ${pluginVersion}\n*/\n\nCREATE TABLE Persons\n(\n    PersonID int NOT NULL,\n    LastName constchar(255),\n    " +
-    "FirstName constchar(255),\n    Address constchar(255),\n    City constchar(255),\n    Primary Key(PersonID)\n);\n\n" + 
-    "CREATE TABLE Orders\n(\n    OrderID int NOT NULL PRIMARY KEY,\n    PersonID int NOT NULL,\n    FOREIGN KEY ([PersonID]) REFERENCES [Persons]([PersonID])" +
-    "\n);`;
+  const defaultReset = `/*\n\tDrawio default value\n\tPlugin: sql\n\tVersion: ${pluginVersion}\n*/\n\nCREATE TABLE Persons\n(\n    PersonID int NOT NULL,\n    LastName constchar(255),\n    ` +
+    `FirstName constchar(255),\n    Address constchar(255),\n    City constchar(255),\n    Primary Key(PersonID)\n);\n\n` + 
+    `CREATE TABLE Orders\n(\n    OrderID int NOT NULL PRIMARY KEY,\n    PersonID int NOT NULL,\n    FOREIGN KEY ([PersonID]) REFERENCES [Persons]([PersonID])` +
+    `\n);`;
 
   sqlInputFromSQL.value = defaultReset;
   mxUtils.br(divFromSQL);
