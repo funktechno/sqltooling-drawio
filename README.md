@@ -10,11 +10,11 @@ This project provides plugins that extend Draw.io with SQL and NoSQL capabilitie
 - Generate TypeScript interfaces
 - Work with various database schemas
 
-## Installation
+## Download
 
 ### Option 1: Direct Download
 
-Download the plugin files directly:
+Download the plugin files directly from the [releases page](https://github.com/funktechno/sqltooling-drawio/releases) or use the direct links below:
 
 - **[sql.js](https://raw.githubusercontent.com/funktechno/sqltooling-drawio/main/dist/sql.js)** - Import/export SQL DDLs
 - **[nosql.js](https://raw.githubusercontent.com/funktechno/sqltooling-drawio/main/dist/nosql.js)** - Import/export OpenAPI JSONs
@@ -31,11 +31,14 @@ git clone --branch main git@github.com:funktechno/sqltooling-drawio.git
 
 Then use the files from the `dist` folder.
 
-### Option 3: VSCode Integration
+## Installation
+
+### VSCode Integration
 
 For VSCode users with the [Draw.io Integration](https://marketplace.visualstudio.com/items?itemName=hediet.vscode-drawio) extension:
 
-Add to your `settings.json`:
+1. Download the plugin files from the [Download](#download) section above
+2. Add to your `settings.json`:
 
 ```json
 {
@@ -50,7 +53,36 @@ Add to your `settings.json`:
 }
 ```
 
-For more installation options, see [tam-drawio](https://github.com/ariel-bentu/tam-drawio).
+### Desktop App Integration
+
+It's easiest to setup in the Draw.io Desktop to use the plugin. Follow these steps:
+
+#### Prerequisites
+- Download and install [Node.js](https://nodejs.org/)
+
+#### Setup Steps
+
+1. **Clone or Download Draw.io Desktop**
+   - **Option A (Git Clone)**: `git clone --recursive https://github.com/jgraph/drawio-desktop.git` (1 GB clone)
+   - **Option B (Download ZIP)**: Download from [dev.zip](https://github.com/jgraph/drawio-desktop/archive/refs/heads/dev.zip) and unzip
+   - ⚠️ **Note**: Don't download precompiled from Releases as you can't modify the plugins
+
+2. **Install Dependencies**
+   - Open command line (PowerShell, Command Prompt, Bash, Terminal)
+   - Navigate to the drawio-desktop folder: `cd <path>/drawio-desktop`
+   - Run: `npm install`
+
+3. **Update SQL Plugin**
+   - Update `drawio/src/main/webapp/plugins/sql.js` with changes from [this branch](https://raw.githubusercontent.com/funktechno/sqltooling-drawio/main/dist/sql.js)
+
+4. **Run Application**
+   - Execute: `npm start`
+
+5. **Add Plugin**
+   - In the running application, go to **Extras** → **Plugins** → **Add**
+   - Select `sql` plugin
+   - Close application and reopen
+   - Plugin is now installed and ready to use
 
 ## Features
 
