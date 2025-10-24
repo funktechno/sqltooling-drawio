@@ -898,7 +898,7 @@ const sharedUtils_1 = require("./utils/sharedUtils");
 const constants_1 = require("./utils/constants");
 /**
  * SQL Tools Plugin for importing diagrams from SQL DDL and exporting to SQL.
- * Version: 0.0.6
+ * Version: 0.0.7
  */
 Draw.loadPlugin(function (ui) {
     // export sql methods
@@ -1003,13 +1003,46 @@ Draw.loadPlugin(function (ui) {
     const sqlInputFromSQL = document.createElement("textarea");
     sqlInputFromSQL.style.height = "200px";
     sqlInputFromSQL.style.width = "100%";
-    const defaultReset = `/*\n\tDrawio default value\n\tPlugin: sql\n\tVersion: ${constants_1.pluginVersion}\n*/\n\nCREATE TABLE Persons\n(\n    PersonID int NOT NULL,\n    LastName constchar(255),\n    " +
-    "FirstName constchar(255),\n    Address constchar(255),\n    City constchar(255),\n    Primary Key(PersonID)\n);\n\n" + 
-    "CREATE TABLE Orders\n(\n    OrderID int NOT NULL PRIMARY KEY,\n    PersonID int NOT NULL,\n    FOREIGN KEY ([PersonID]) REFERENCES [Persons]([PersonID])" +
-    "\n);`;
-    sqlInputFromSQL.value = defaultReset;
+    // Sample SQL templates for different database types
+    const sampleTemplates = {
+        mysql: `/*\n\tMySQL Sample\n\tPlugin: sql\n\tVersion: ${constants_1.pluginVersion}\n*/\n\nCREATE TABLE Persons (\n    PersonID INT NOT NULL AUTO_INCREMENT,\n    LastName VARCHAR(255),\n    FirstName VARCHAR(255),\n    Address VARCHAR(255),\n    City VARCHAR(255),\n    PRIMARY KEY (PersonID)\n);\n\nCREATE TABLE Orders (\n    OrderID INT NOT NULL AUTO_INCREMENT PRIMARY KEY,\n    PersonID INT NOT NULL,\n    OrderDate DATETIME DEFAULT CURRENT_TIMESTAMP,\n    FOREIGN KEY (PersonID) REFERENCES Persons(PersonID)\n);`,
+        postgres: `/*\n\tPostgreSQL Sample\n\tPlugin: sql\n\tVersion: ${constants_1.pluginVersion}\n*/\n\nCREATE TABLE Persons (\n    PersonID SERIAL PRIMARY KEY,\n    LastName VARCHAR(255),\n    FirstName VARCHAR(255),\n    Address VARCHAR(255),\n    City VARCHAR(255)\n);\n\nCREATE TABLE Orders (\n    OrderID SERIAL PRIMARY KEY,\n    PersonID INTEGER NOT NULL,\n    OrderDate TIMESTAMP DEFAULT CURRENT_TIMESTAMP,\n    FOREIGN KEY (PersonID) REFERENCES Persons(PersonID)\n);`,
+        sqlserver: `/*\n\tSQL Server Sample\n\tPlugin: sql\n\tVersion: ${constants_1.pluginVersion}\n*/\n\nCREATE TABLE Persons (\n    PersonID INT IDENTITY(1,1) PRIMARY KEY,\n    LastName NVARCHAR(255),\n    FirstName NVARCHAR(255),\n    Address NVARCHAR(255),\n    City NVARCHAR(255)\n);\n\nCREATE TABLE Orders (\n    OrderID INT IDENTITY(1,1) PRIMARY KEY,\n    PersonID INT NOT NULL,\n    OrderDate DATETIME2 DEFAULT GETDATE(),\n    FOREIGN KEY (PersonID) REFERENCES Persons(PersonID)\n);`,
+        sqlite: `/*\n\tSQLite Sample\n\tPlugin: sql\n\tVersion: ${constants_1.pluginVersion}\n*/\n\nCREATE TABLE Persons (\n    PersonID INTEGER PRIMARY KEY AUTOINCREMENT,\n    LastName TEXT,\n    FirstName TEXT,\n    Address TEXT,\n    City TEXT\n);\n\nCREATE TABLE Orders (\n    OrderID INTEGER PRIMARY KEY AUTOINCREMENT,\n    PersonID INTEGER NOT NULL,\n    OrderDate DATETIME DEFAULT CURRENT_TIMESTAMP,\n    FOREIGN KEY (PersonID) REFERENCES Persons(PersonID)\n);`
+    };
+    // Database type dropdown
+    const dbTypeSelect = document.createElement("select");
+    dbTypeSelect.style.marginTop = "8px";
+    dbTypeSelect.style.marginRight = "8px";
+    dbTypeSelect.style.padding = "4px";
+    const dbTypes = [
+        { value: "mysql", label: "MySQL" },
+        { value: "postgres", label: "PostgreSQL" },
+        { value: "sqlserver", label: "SQL Server" },
+        { value: "sqlite", label: "SQLite" }
+    ];
+    dbTypes.forEach(dbType => {
+        const option = document.createElement("option");
+        option.value = dbType.value;
+        option.textContent = dbType.label;
+        dbTypeSelect.appendChild(option);
+    });
+    // Set default to MySQL
+    dbTypeSelect.value = "mysql";
+    // Function to update SQL input based on selected database type
+    function updateSampleSQL() {
+        const selectedType = dbTypeSelect.value;
+        sqlInputFromSQL.value = sampleTemplates[selectedType];
+    }
+    // Add event listener to dropdown to update sample SQL when selection changes
+    dbTypeSelect.addEventListener("change", updateSampleSQL);
+    // Initialize with MySQL sample
+    sqlInputFromSQL.value = sampleTemplates.mysql;
     mxUtils.br(divFromSQL);
     divFromSQL.appendChild(sqlInputFromSQL);
+    // Add dropdown to UI
+    mxUtils.br(divFromSQL);
+    divFromSQL.appendChild(dbTypeSelect);
     // Extends Extras menu
     mxResources.parse("fromSql=From SQL");
     const wndFromSQL = new mxWindow(mxResources.get("fromSql"), divFromSQL, document.body.offsetWidth - 480, 140, 320, 320, true, true);
@@ -1040,36 +1073,19 @@ Draw.loadPlugin(function (ui) {
     }
     mxUtils.br(divFromSQL);
     const resetBtnFromSQL = mxUtils.button(mxResources.get("reset"), function () {
-        sqlInputFromSQL.value = defaultReset;
+        updateSampleSQL();
     });
     resetBtnFromSQL.style.marginTop = "8px";
     resetBtnFromSQL.style.marginRight = "4px";
     resetBtnFromSQL.style.padding = "4px";
     divFromSQL.appendChild(resetBtnFromSQL);
-    const btnFromSQL_mysql = mxUtils.button("Insert MySQL", function () {
-        parseSql(sqlInputFromSQL.value, "mysql");
+    const btnFromSQL_insert = mxUtils.button("Insert", function () {
+        const selectedType = dbTypeSelect.value;
+        parseSql(sqlInputFromSQL.value, selectedType);
     });
-    btnFromSQL_mysql.style.marginTop = "8px";
-    btnFromSQL_mysql.style.padding = "4px";
-    divFromSQL.appendChild(btnFromSQL_mysql);
-    const btnFromSQL_sqlserver = mxUtils.button("Insert SQL Server", function () {
-        parseSql(sqlInputFromSQL.value, "sqlserver");
-    });
-    btnFromSQL_sqlserver.style.marginTop = "8px";
-    btnFromSQL_sqlserver.style.padding = "4px";
-    divFromSQL.appendChild(btnFromSQL_sqlserver);
-    const btnFromSQL_postgres = mxUtils.button("Insert PostgreSQL", function () {
-        parseSql(sqlInputFromSQL.value, "postgres");
-    });
-    btnFromSQL_postgres.style.marginTop = "8px";
-    btnFromSQL_postgres.style.padding = "4px";
-    divFromSQL.appendChild(btnFromSQL_postgres);
-    const btnFromSQL_sqlite = mxUtils.button("Insert Sqlite", function () {
-        parseSql(sqlInputFromSQL.value, "sqlite");
-    });
-    btnFromSQL_sqlite.style.marginTop = "8px";
-    btnFromSQL_sqlite.style.padding = "4px";
-    divFromSQL.appendChild(btnFromSQL_sqlite);
+    btnFromSQL_insert.style.marginTop = "8px";
+    btnFromSQL_insert.style.padding = "4px";
+    divFromSQL.appendChild(btnFromSQL_insert);
     // Adds action
     ui.actions.addAction("fromSql", function () {
         wndFromSQL.setVisible(!wndFromSQL.isVisible());
@@ -1115,7 +1131,7 @@ Draw.loadPlugin(function (ui) {
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.objectKeyword = exports.arrayKeyword = exports.nullableKeyword = exports.enumKeyword = exports.formatKeyword = exports.commentColumnQuantifiers = exports.pluginVersion = void 0;
 // export sql methods
-exports.pluginVersion = "0.0.6";
+exports.pluginVersion = "0.0.7";
 exports.commentColumnQuantifiers = {
     Start: "/**",
     End: "*/",
@@ -1192,7 +1208,7 @@ function dbTypeEnds(label) {
  * @returns
  */
 function RemoveNameQuantifiers(name) {
-    return name.replace(/\[|\]|\(|\"|\'|\`/g, "").trim();
+    return name.replace(/\[|\]|\(|\)|\"|\'|\`/g, "").trim();
 }
 /**
  * extract row column attributes
@@ -1208,11 +1224,18 @@ function getDbLabel(label, columnQuantifiers) {
         result.indexOf(columnQuantifiers.End + " ") !== -1
         ? result.indexOf(columnQuantifiers.End + " ")
         : result.indexOf(" ");
-    const attributeType = result.substring(firstSpaceIndex + 1).trim();
+    let attributeType = result.substring(firstSpaceIndex + 1).trim();
     const attributeName = RemoveNameQuantifiers(result.substring(0, firstSpaceIndex + 1));
+    const attributesTypes = attributeType.split(" ");
+    let attributeComment = null;
+    if (attributesTypes.length > 1) {
+        attributeComment = attributesTypes.slice(1).join(' ');
+        attributeType = attributesTypes[0];
+    }
     const attribute = {
         attributeName,
         attributeType,
+        attributeComment,
     };
     return attribute;
 }
@@ -1616,6 +1639,11 @@ function CreateTableUI(ui, wndFromInput, tableList, cells, rowCell, tableCell, f
         // add foreign key edges
         const model = graph.getModel();
         const columnQuantifiers = GetColumnQuantifiers(type);
+        const insertEdge = mxUtils.bind(this, function (targetCell, sourceCell, edge) {
+            const label = "";
+            const edgeStyle = "edgeStyle=entityRelationEdgeStyle;html=1;endArrow=ERzeroToMany;startArrow=ERzeroToOne;labelBackgroundColor=none;fontFamily=Verdana;fontSize=14;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=-0.018;entryY=0.608;entryDx=0;entryDy=0;entryPerimeter=0;";
+            const edgeCell = graph.insertEdge(null, null, label || "", edge.invert ? sourceCell : targetCell, edge.invert ? targetCell : sourceCell, edgeStyle);
+        });
         // const pt = graph.getFreeInsertPoint();
         foreignKeyList.forEach(function (fk) {
             if (fk.IsDestination &&
@@ -1623,11 +1651,6 @@ function CreateTableUI(ui, wndFromInput, tableList, cells, rowCell, tableCell, f
                 fk.ReferencesPropertyName &&
                 fk.PrimaryKeyTableName &&
                 fk.ReferencesTableName) {
-                const insertEdge = mxUtils.bind(this, function (targetCell, sourceCell, edge) {
-                    const label = "";
-                    const edgeStyle = "edgeStyle=entityRelationEdgeStyle;html=1;endArrow=ERzeroToMany;startArrow=ERzeroToOne;labelBackgroundColor=none;fontFamily=Verdana;fontSize=14;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=-0.018;entryY=0.608;entryDx=0;entryDy=0;entryPerimeter=0;";
-                    const edgeCell = graph.insertEdge(null, null, label || "", edge.invert ? sourceCell : targetCell, edge.invert ? targetCell : sourceCell, edgeStyle);
-                });
                 const edge = {
                     invert: true,
                 };
@@ -1656,13 +1679,13 @@ function CreateTableUI(ui, wndFromInput, tableList, cells, rowCell, tableCell, f
                                             col.style.trim().startsWith("shape=partialRectangle")) {
                                             const attribute = getDbLabel(col.value, columnQuantifiers);
                                             if (isPrimaryTable &&
-                                                dbTypeEnds(attribute.attributeName) == fk.PrimaryKeyName) {
+                                                RemoveNameQuantifiers(attribute.attributeName) == RemoveNameQuantifiers(fk.PrimaryKeyName)) {
                                                 targetCell = col;
                                                 // allow recursion
                                             }
                                             if (isForeignTable &&
-                                                dbTypeEnds(attribute.attributeName) ==
-                                                    fk.ReferencesPropertyName) {
+                                                RemoveNameQuantifiers(attribute.attributeName) ==
+                                                    RemoveNameQuantifiers(fk.ReferencesPropertyName)) {
                                                 sourceCell = col;
                                             }
                                             if (targetCell && sourceCell)
