@@ -131,6 +131,7 @@ describe("sharedUtils.ts", () => {
       const quantifiers = { Start: "`", End: "`" };
       const attribute = getDbLabel(label, quantifiers);
       expect(attribute).toEqual({
+        attributeComment: null,
         attributeName: "name",
         attributeType: "varchar",
       });

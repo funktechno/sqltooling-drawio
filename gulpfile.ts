@@ -5,8 +5,7 @@ import source from "vinyl-source-stream";
 import buffer from "vinyl-buffer";
 import babelify from "babelify";
 import sourcemaps from "gulp-sourcemaps";
-import gutil from "gulp-util";
-import uglify from "gulp-uglify";
+import terser from "gulp-terser";
 import rename from "gulp-rename";
 
 gulp.task("nosql-min", () => {
@@ -19,16 +18,16 @@ gulp.task("nosql-min", () => {
   })
   .plugin("tsify", { target: "es2016"}) // TypeScript plugin
   .transform(babelify.configure({
-    presets: ["es2015"]
+    presets: ["@babel/preset-env"]
   }))
   // .transform(babelify, { presets: ["@babel/preset-env"], extensions: [".ts"] }) // Babelify with ES6+ presets
   .bundle()
   .pipe(source("nosql.js")) // Output filename
   .pipe(buffer())
   .pipe(sourcemaps.init({ loadMaps: true }))
-  .pipe(uglify()) // Minify (optional)
+  .pipe(terser()) // Minify (optional)
   .pipe(rename({ suffix: ".min" })) // Add ".min" to the filename
-  .on("error", gutil.log)
+  .on("error", console.error)
   // .pipe(sourcemaps.write("./", {}))
   .pipe(gulp.dest("dist")); // Output directory
 });
@@ -43,16 +42,16 @@ gulp.task("nosql-ts-min", () => {
   })
   .plugin("tsify", { target: "es2016"}) // TypeScript plugin
   .transform(babelify.configure({
-    presets: ["es2015"]
+    presets: ["@babel/preset-env"]
   }))
   // .transform(babelify, { presets: ["@babel/preset-env"], extensions: [".ts"] }) // Babelify with ES6+ presets
   .bundle()
   .pipe(source("nosql-ts.js")) // Output filename
   .pipe(buffer())
   .pipe(sourcemaps.init({ loadMaps: true }))
-  .pipe(uglify()) // Minify (optional)
+  .pipe(terser()) // Minify (optional)
   .pipe(rename({ suffix: ".min" })) // Add ".min" to the filename
-  .on("error", gutil.log)
+  .on("error", console.error)
   // .pipe(sourcemaps.write("./", {}))
   .pipe(gulp.dest("dist")); // Output directory
 });

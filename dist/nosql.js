@@ -1,3 +1,8 @@
+/**
+ * File: nosql.js
+ * Version: 0.0.7
+ * Generated: 2025-10-24
+ */
 (function(){function r(e,n,t){function o(i,f){if(!n[i]){if(!e[i]){var c="function"==typeof require&&require;if(!f&&c)return c(i,!0);if(u)return u(i,!0);var a=new Error("Cannot find module '"+i+"'");throw a.code="MODULE_NOT_FOUND",a}var p=n[i]={exports:{}};e[i][0].call(p.exports,function(r){var n=e[i][1][r];return o(n||r)},p,p.exports,r,e,n,t)}return n[i].exports}for(var u="function"==typeof require&&require,i=0;i<t.length;i++)o(t[i]);return o}return r})()({1:[function(require,module,exports){
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
@@ -4607,7 +4612,7 @@ const nosqlUtils_1 = require("./utils/nosqlUtils");
 const constants_nosql_1 = require("./utils/constants-nosql");
 /**
  * SQL Tools Plugin for importing and exporting typescript interfaces.
- * Version: 0.0.6
+ * Version: 0.0.7
  */
 Draw.loadPlugin(function (ui) {
     //Create Base div
@@ -4911,7 +4916,7 @@ exports.validJSONSchemaTypes = JSONSchemaTypes;
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.objectKeyword = exports.arrayKeyword = exports.nullableKeyword = exports.enumKeyword = exports.formatKeyword = exports.commentColumnQuantifiers = exports.pluginVersion = void 0;
 // export sql methods
-exports.pluginVersion = "0.0.6";
+exports.pluginVersion = "0.0.7";
 exports.commentColumnQuantifiers = {
     Start: "/**",
     End: "*/",
@@ -5399,7 +5404,7 @@ function dbTypeEnds(label) {
  * @returns
  */
 function RemoveNameQuantifiers(name) {
-    return name.replace(/\[|\]|\(|\"|\'|\`/g, "").trim();
+    return name.replace(/\[|\]|\(|\)|\"|\'|\`/g, "").trim();
 }
 /**
  * extract row column attributes
@@ -5415,11 +5420,18 @@ function getDbLabel(label, columnQuantifiers) {
         result.indexOf(columnQuantifiers.End + " ") !== -1
         ? result.indexOf(columnQuantifiers.End + " ")
         : result.indexOf(" ");
-    const attributeType = result.substring(firstSpaceIndex + 1).trim();
+    let attributeType = result.substring(firstSpaceIndex + 1).trim();
     const attributeName = RemoveNameQuantifiers(result.substring(0, firstSpaceIndex + 1));
+    const attributesTypes = attributeType.split(" ");
+    let attributeComment = null;
+    if (attributesTypes.length > 1) {
+        attributeComment = attributesTypes.slice(1).join(' ');
+        attributeType = attributesTypes[0];
+    }
     const attribute = {
         attributeName,
         attributeType,
+        attributeComment,
     };
     return attribute;
 }
@@ -5823,6 +5835,11 @@ function CreateTableUI(ui, wndFromInput, tableList, cells, rowCell, tableCell, f
         // add foreign key edges
         const model = graph.getModel();
         const columnQuantifiers = GetColumnQuantifiers(type);
+        const insertEdge = mxUtils.bind(this, function (targetCell, sourceCell, edge) {
+            const label = "";
+            const edgeStyle = "edgeStyle=entityRelationEdgeStyle;html=1;endArrow=ERzeroToMany;startArrow=ERzeroToOne;labelBackgroundColor=none;fontFamily=Verdana;fontSize=14;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=-0.018;entryY=0.608;entryDx=0;entryDy=0;entryPerimeter=0;";
+            const edgeCell = graph.insertEdge(null, null, label || "", edge.invert ? sourceCell : targetCell, edge.invert ? targetCell : sourceCell, edgeStyle);
+        });
         // const pt = graph.getFreeInsertPoint();
         foreignKeyList.forEach(function (fk) {
             if (fk.IsDestination &&
@@ -5830,11 +5847,6 @@ function CreateTableUI(ui, wndFromInput, tableList, cells, rowCell, tableCell, f
                 fk.ReferencesPropertyName &&
                 fk.PrimaryKeyTableName &&
                 fk.ReferencesTableName) {
-                const insertEdge = mxUtils.bind(this, function (targetCell, sourceCell, edge) {
-                    const label = "";
-                    const edgeStyle = "edgeStyle=entityRelationEdgeStyle;html=1;endArrow=ERzeroToMany;startArrow=ERzeroToOne;labelBackgroundColor=none;fontFamily=Verdana;fontSize=14;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=-0.018;entryY=0.608;entryDx=0;entryDy=0;entryPerimeter=0;";
-                    const edgeCell = graph.insertEdge(null, null, label || "", edge.invert ? sourceCell : targetCell, edge.invert ? targetCell : sourceCell, edgeStyle);
-                });
                 const edge = {
                     invert: true,
                 };
@@ -5863,13 +5875,13 @@ function CreateTableUI(ui, wndFromInput, tableList, cells, rowCell, tableCell, f
                                             col.style.trim().startsWith("shape=partialRectangle")) {
                                             const attribute = getDbLabel(col.value, columnQuantifiers);
                                             if (isPrimaryTable &&
-                                                dbTypeEnds(attribute.attributeName) == fk.PrimaryKeyName) {
+                                                RemoveNameQuantifiers(attribute.attributeName) == RemoveNameQuantifiers(fk.PrimaryKeyName)) {
                                                 targetCell = col;
                                                 // allow recursion
                                             }
                                             if (isForeignTable &&
-                                                dbTypeEnds(attribute.attributeName) ==
-                                                    fk.ReferencesPropertyName) {
+                                                RemoveNameQuantifiers(attribute.attributeName) ==
+                                                    RemoveNameQuantifiers(fk.ReferencesPropertyName)) {
                                                 sourceCell = col;
                                             }
                                             if (targetCell && sourceCell)
