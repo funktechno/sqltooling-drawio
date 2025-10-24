@@ -1,10 +1,10 @@
 {
   "name": "sqltooling-drawio",
-  "version": "0.0.6",
+  "version": "0.0.7",
   "description": "plugins for sql tooling in drawio",
   "main": "index.js",
   "engines": {
-    "node": ">=16.x"
+    "node": ">=22.x"
   },
   "scripts": {
     "start": "node index.mjs",
@@ -48,12 +48,12 @@
     "core-types-json-schema": "^1.7.0",
     "core-types-ts": "^3.5.0",
     "openapi-json-schema": "^2.0.0",
-    "openapi-typescript": "^7.0.0"
+    "openapi-typescript": "^7.0.2"
   },
   "devDependencies": {
     "@babel/core": "^7.24.7",
     "@babel/preset-env": "^7.24.7",
-    "@eslint/js": "^9.6.0",
+    "@eslint/js": "^9.12.0",
     "@types/babelify": "^7.3.10",
     "@types/browserify": "^12.0.40",
     "@types/gulp": "^4.0.17",
@@ -67,7 +67,7 @@
     "babel-preset-es2015": "^6.24.1",
     "babel-preset-es2016": "^6.24.1",
     "babelify": "^10.0.0",
-    "browserify": "^17.0.0",
+    "browserify": "^17.0.1",
     "eslint": "^9.6.0",
     "globals": "^15.8.0",
     "gulp": "^5.0.0",
@@ -80,7 +80,7 @@
     "jest-environment-jsdom": "^29.7.0",
     "jest-junit": "^16.0.0",
     "jest-serial-runner": "^1.1.0",
-    "ts-jest": "^29.0.1",
+    "ts-jest": "^29.2.5",
     "ts-node": "^10.9.1",
     "tsify": "^5.0.4",
     "typeconv": "^1.8.0",
