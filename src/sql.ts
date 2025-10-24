@@ -154,14 +154,58 @@ Draw.loadPlugin(function (ui) {
   const sqlInputFromSQL = document.createElement("textarea");
   sqlInputFromSQL.style.height = "200px";
   sqlInputFromSQL.style.width = "100%";
-  const defaultReset = `/*\n\tDrawio default value\n\tPlugin: sql\n\tVersion: ${pluginVersion}\n*/\n\nCREATE TABLE Persons\n(\n    PersonID int NOT NULL,\n    LastName constchar(255),\n    ` +
-    `FirstName constchar(255),\n    Address constchar(255),\n    City constchar(255),\n    Primary Key(PersonID)\n);\n\n` + 
-    `CREATE TABLE Orders\n(\n    OrderID int NOT NULL PRIMARY KEY,\n    PersonID int NOT NULL,\n    FOREIGN KEY ([PersonID]) REFERENCES [Persons]([PersonID])` +
-    `\n);`;
+  
+  // Sample SQL templates for different database types
+  const sampleTemplates = {
+    mysql: `/*\n\tMySQL Sample\n\tPlugin: sql\n\tVersion: ${pluginVersion}\n*/\n\nCREATE TABLE Persons (\n    PersonID INT NOT NULL AUTO_INCREMENT,\n    LastName VARCHAR(255),\n    FirstName VARCHAR(255),\n    Address VARCHAR(255),\n    City VARCHAR(255),\n    PRIMARY KEY (PersonID)\n);\n\nCREATE TABLE Orders (\n    OrderID INT NOT NULL AUTO_INCREMENT PRIMARY KEY,\n    PersonID INT NOT NULL,\n    OrderDate DATETIME DEFAULT CURRENT_TIMESTAMP,\n    FOREIGN KEY (PersonID) REFERENCES Persons(PersonID)\n);`,
+    
+    postgres: `/*\n\tPostgreSQL Sample\n\tPlugin: sql\n\tVersion: ${pluginVersion}\n*/\n\nCREATE TABLE Persons (\n    PersonID SERIAL PRIMARY KEY,\n    LastName VARCHAR(255),\n    FirstName VARCHAR(255),\n    Address VARCHAR(255),\n    City VARCHAR(255)\n);\n\nCREATE TABLE Orders (\n    OrderID SERIAL PRIMARY KEY,\n    PersonID INTEGER NOT NULL,\n    OrderDate TIMESTAMP DEFAULT CURRENT_TIMESTAMP,\n    FOREIGN KEY (PersonID) REFERENCES Persons(PersonID)\n);`,
+    
+    sqlserver: `/*\n\tSQL Server Sample\n\tPlugin: sql\n\tVersion: ${pluginVersion}\n*/\n\nCREATE TABLE Persons (\n    PersonID INT IDENTITY(1,1) PRIMARY KEY,\n    LastName NVARCHAR(255),\n    FirstName NVARCHAR(255),\n    Address NVARCHAR(255),\n    City NVARCHAR(255)\n);\n\nCREATE TABLE Orders (\n    OrderID INT IDENTITY(1,1) PRIMARY KEY,\n    PersonID INT NOT NULL,\n    OrderDate DATETIME2 DEFAULT GETDATE(),\n    FOREIGN KEY (PersonID) REFERENCES Persons(PersonID)\n);`,
+    
+    sqlite: `/*\n\tSQLite Sample\n\tPlugin: sql\n\tVersion: ${pluginVersion}\n*/\n\nCREATE TABLE Persons (\n    PersonID INTEGER PRIMARY KEY AUTOINCREMENT,\n    LastName TEXT,\n    FirstName TEXT,\n    Address TEXT,\n    City TEXT\n);\n\nCREATE TABLE Orders (\n    OrderID INTEGER PRIMARY KEY AUTOINCREMENT,\n    PersonID INTEGER NOT NULL,\n    OrderDate DATETIME DEFAULT CURRENT_TIMESTAMP,\n    FOREIGN KEY (PersonID) REFERENCES Persons(PersonID)\n);`
+  };
 
-  sqlInputFromSQL.value = defaultReset;
+  // Database type dropdown
+  const dbTypeSelect = document.createElement("select");
+  dbTypeSelect.style.marginTop = "8px";
+  dbTypeSelect.style.marginRight = "8px";
+  dbTypeSelect.style.padding = "4px";
+  
+  const dbTypes = [
+    { value: "mysql", label: "MySQL" },
+    { value: "postgres", label: "PostgreSQL" },
+    { value: "sqlserver", label: "SQL Server" },
+    { value: "sqlite", label: "SQLite" }
+  ];
+  
+  dbTypes.forEach(dbType => {
+    const option = document.createElement("option");
+    option.value = dbType.value;
+    option.textContent = dbType.label;
+    dbTypeSelect.appendChild(option);
+  });
+  
+  // Set default to MySQL
+  dbTypeSelect.value = "mysql";
+  
+  // Function to update SQL input based on selected database type
+  function updateSampleSQL() {
+    const selectedType = dbTypeSelect.value as keyof typeof sampleTemplates;
+    sqlInputFromSQL.value = sampleTemplates[selectedType];
+  }
+  
+  // Add event listener to dropdown to update sample SQL when selection changes
+  dbTypeSelect.addEventListener("change", updateSampleSQL);
+  
+  // Initialize with MySQL sample
+  sqlInputFromSQL.value = sampleTemplates.mysql;
   mxUtils.br(divFromSQL);
   divFromSQL.appendChild(sqlInputFromSQL);
+  
+  // Add dropdown to UI
+  mxUtils.br(divFromSQL);
+  divFromSQL.appendChild(dbTypeSelect);
 
   // Extends Extras menu
   mxResources.parse("fromSql=From SQL");
@@ -222,7 +266,7 @@ Draw.loadPlugin(function (ui) {
   mxUtils.br(divFromSQL);
 
   const resetBtnFromSQL = mxUtils.button(mxResources.get("reset"), function () {
-    sqlInputFromSQL.value = defaultReset;
+    updateSampleSQL();
   });
 
   resetBtnFromSQL.style.marginTop = "8px";
@@ -230,37 +274,14 @@ Draw.loadPlugin(function (ui) {
   resetBtnFromSQL.style.padding = "4px";
   divFromSQL.appendChild(resetBtnFromSQL);
 
-  const btnFromSQL_mysql = mxUtils.button("Insert MySQL", function () {
-    parseSql(sqlInputFromSQL.value, "mysql");
+  const btnFromSQL_insert = mxUtils.button("Insert", function () {
+    const selectedType = dbTypeSelect.value as "mysql" | "sqlite" | "postgres" | "sqlserver" | undefined;
+    parseSql(sqlInputFromSQL.value, selectedType);
   });
 
-  btnFromSQL_mysql.style.marginTop = "8px";
-  btnFromSQL_mysql.style.padding = "4px";
-  divFromSQL.appendChild(btnFromSQL_mysql);
-
-  const btnFromSQL_sqlserver = mxUtils.button("Insert SQL Server", function () {
-    parseSql(sqlInputFromSQL.value, "sqlserver");
-  });
-
-  btnFromSQL_sqlserver.style.marginTop = "8px";
-  btnFromSQL_sqlserver.style.padding = "4px";
-  divFromSQL.appendChild(btnFromSQL_sqlserver);
-
-  const btnFromSQL_postgres = mxUtils.button("Insert PostgreSQL", function () {
-    parseSql(sqlInputFromSQL.value, "postgres");
-  });
-
-  btnFromSQL_postgres.style.marginTop = "8px";
-  btnFromSQL_postgres.style.padding = "4px";
-  divFromSQL.appendChild(btnFromSQL_postgres);
-
-  const btnFromSQL_sqlite = mxUtils.button("Insert Sqlite", function () {
-    parseSql(sqlInputFromSQL.value, "sqlite");
-  });
-
-  btnFromSQL_sqlite.style.marginTop = "8px";
-  btnFromSQL_sqlite.style.padding = "4px";
-  divFromSQL.appendChild(btnFromSQL_sqlite);
+  btnFromSQL_insert.style.marginTop = "8px";
+  btnFromSQL_insert.style.padding = "4px";
+  divFromSQL.appendChild(btnFromSQL_insert);
 
   // Adds action
   ui.actions.addAction("fromSql", function () {
