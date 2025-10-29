@@ -5,7 +5,7 @@ on:
 
 jobs:
   auto-merge:
-    if: GITHUB_ACTOR == 'dependabot'
+    # if: github.actor == 'dependabot[bot]'
     runs-on: ubuntu-latest
     steps:
       - run: echo ${GITHUB_ACTOR}
