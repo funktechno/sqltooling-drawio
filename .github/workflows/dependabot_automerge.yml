@@ -5,9 +5,10 @@ on:
 
 jobs:
   auto-merge:
-    if: github.actor == 'dependabot[bot]'
+    # if: github.actor == 'dependabot[bot]'
     runs-on: ubuntu-latest
     steps:
+      - run: echo ${GITHUB_ACTOR}
       - uses: actions/checkout@v2
       - uses: ahmadnassri/action-dependabot-auto-merge@v2
         with:
