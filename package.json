@@ -65,7 +65,7 @@
     "@types/vinyl-source-stream": "^0.0.34",
     "babelify": "^10.0.0",
     "browserify": "^17.0.1",
-    "eslint": "^9.6.0",
+    "eslint": "^9.39.0",
     "globals": "^15.8.0",
     "gulp": "^5.0.1",
     "gulp-rename": "^2.0.0",
