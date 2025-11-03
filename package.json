@@ -56,7 +56,7 @@
     "@eslint/js": "^9.12.0",
     "@types/babelify": "^7.3.10",
     "@types/browserify": "^12.0.40",
-    "@types/gulp": "^4.0.17",
+    "@types/gulp": "^4.0.18",
     "@types/gulp-rename": "^2.0.6",
     "@types/gulp-sourcemaps": "^0.0.38",
     "@types/gulp-terser": "^1.2.6",
