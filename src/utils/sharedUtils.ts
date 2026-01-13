@@ -225,7 +225,7 @@ export function getMermaidDiagramDb(
           if (comment) {
             entity.name += ` ${comment}`;
           }
-          console.log(entity.name);
+          console.log("Table: ", entity.name);
           // Iterate over the children of this cell; treat them as possible columns in the DB table
           //
           // Get row attributes
@@ -267,19 +267,20 @@ export function getMermaidDiagramDb(
                   }
                 }
                 entity.attributes.push(attribute);
+                console.log("Column: ", attribute.attributeName);
 
                 if (col.edges && col.edges.length) {
+                  console.log(col.edges.length, "edges");
                   // check for edges foreign keys
                   for (let e = 0; e < col.edges.length; e++) {
                     const edge = col.edges[e];
+                    console.log("source=", edge.source, " target=", edge.target);
                     if (edge.mxObjectId.indexOf("mxCell") !== -1) {
                       if (
                         edge.style &&
                         edge.style.indexOf("endArrow=") != -1 &&
                         edge.source &&
-                        edge.source.value &&
-                        edge.target &&
-                        edge.target.value
+                        edge.target
                       ) {
                         // need to check if end is open or certain value to determin relationship type
                         // extract endArrow txt
@@ -333,6 +334,7 @@ export function getMermaidDiagramDb(
                           (targetIsPrimary || sourceIsPrimary) &&
                           !(targetIsPrimary && sourceIsPrimary)
                         ) {
+                          console.log("Source: ", edge.source.id, edge.source.value);
                           let sourceId = edge.source.value;
                           if (edge.source.style.trim().startsWith("shape=tableRow")) {
                             sourceId = edge.source.children[1].value;
@@ -342,6 +344,7 @@ export function getMermaidDiagramDb(
                             columnQuantifiers
                           );
                           sourceId = sourceAttr.attributeName;
+
                           let sourceEntity = edge.source.parent.value;
                           // extract comments
                           let commentsIndexes = getCommentIndexes(sourceEntity);
@@ -364,6 +367,8 @@ export function getMermaidDiagramDb(
                           } else {
                             sourceEntity = RemoveNameQuantifiers(sourceEntity);
                           }
+
+                          console.log("Target: ", edge.target.id, edge.target.value);
                           let targetId = edge.target.value;
                           if (edge.target.style.trim().startsWith("shape=tableRow")) {
                             targetId = edge.target.children[1].value;
@@ -439,8 +444,9 @@ export function getMermaidDiagramDb(
                           );
                           sourceAttr.attributeKeyType = "PK";
                           sourceId = sourceAttr.attributeName;
+                          let sourceParent = edge.source.parent;
                           const sourceEntity = RemoveNameQuantifiers(
-                            edge.source.parent.value
+                            sourceParent.value
                           );
                           let targetId = edge.target.value;
                           if (edge.target.style.trim().startsWith("shape=tableRow")) {
@@ -452,8 +458,9 @@ export function getMermaidDiagramDb(
                           );
                           targetAttr.attributeKeyType = "PK";
                           targetId = targetAttr.attributeName;
+                          let targetParent = edge.target.parent;
                           const targetEntity = RemoveNameQuantifiers(
-                            edge.target.parent.value
+                            targetParent.value
                           );
                           const compositeEntity = {
                             name:
