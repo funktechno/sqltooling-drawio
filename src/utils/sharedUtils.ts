@@ -154,6 +154,7 @@ export function getCommentIndexes(result: string) {
     end: lastSpaceIndex,
   };
 }
+
 /**
  * generate db from drawio graph models
  * @param ui
@@ -179,11 +180,17 @@ export function getMermaidDiagramDb(
   // TODO: support for ts and openapi enum
   // build models
   // fix fk for comments
+  //
+  // Loop through cells in the model
   for (const key in model.cells) {
     if (Object.hasOwnProperty.call(model.cells, key)) {
       const mxcell = model.cells[key];
       if (mxcell.mxObjectId.indexOf("mxCell") !== -1) {
-        if (mxcell.style && mxcell.style.trim().startsWith("swimlane;")) {
+        // See if this is a swimlane (list/entity) or a table.
+        // If so, treat it as a table in the DB
+        if (mxcell.style && (mxcell.style.trim().startsWith("swimlane;") 
+          || mxcell.style.trim().startsWith("shape=table;"))
+        ) {
           let entityName = mxcell.value.toString();
           let description = "";
           let formatValue = "";
@@ -218,34 +225,49 @@ export function getMermaidDiagramDb(
           if (comment) {
             entity.name += ` ${comment}`;
           }
+          console.log(entity.name);
+          // Iterate over the children of this cell; treat them as possible columns in the DB table
+          //
+          // Get row attributes
+          const columnQuantifiers = GetColumnQuantifiers(type);
           // const comment =
           for (let c = 0; c < mxcell.children.length; c++) {
             const col = mxcell.children[c];
             if (col.mxObjectId.indexOf("mxCell") !== -1) {
               if (
                 col.style &&
-                col.style.trim().startsWith("shape=partialRectangle")
+                (col.style.trim().startsWith("shape=partialRectangle") || 
+                col.style.trim().startsWith("shape=tableRow") ||
+                col.style.trim().startsWith("text"))    // List entry
               ) {
-                const columnQuantifiers = GetColumnQuantifiers(type);
                 //Get delimiter of column name
                 //Get full name
-                const attribute = getDbLabel(col.value, columnQuantifiers);
-                const attributeKeyType = col.children.find(
-                  (x) =>
-                    ["FK", "PK"].findIndex(
-                      (k) => k == x.value.toUpperCase()
-                    ) !== -1 || x.value.toUpperCase().indexOf("PK,") != -1
-                );
-                if (attributeKeyType) {
-                  attribute.attributeKeyType = attributeKeyType.value;
-                  if (
-                    attribute.attributeKeyType != "PK" &&
-                    attribute.attributeKeyType.indexOf("PK") != -1
-                  ) {
-                    attribute.attributeKeyType = "PK";
+                let attribute;
+                if (col.style.trim().startsWith("shape=tableRow")) {
+                  attribute = getDbLabel(col.children[1].value, columnQuantifiers);
+                } else {
+                  attribute = getDbLabel(col.value, columnQuantifiers);
+                }
+                if (col.children && col.children.length) {
+                  // Check for Primary Key or Foreign Key attribute
+                  const attributeKeyType = col.children.find(
+                    (x) =>
+                      ["FK", "PK"].findIndex(
+                        (k) => k == x.value.toUpperCase()
+                      ) !== -1 || x.value.toUpperCase().indexOf("PK,") != -1
+                  );
+                  if (attributeKeyType) {
+                    attribute.attributeKeyType = attributeKeyType.value;
+                    if (
+                      attribute.attributeKeyType != "PK" &&
+                      attribute.attributeKeyType.indexOf("PK") != -1
+                    ) {
+                      attribute.attributeKeyType = "PK";
+                    }
                   }
                 }
                 entity.attributes.push(attribute);
+
                 if (col.edges && col.edges.length) {
                   // check for edges foreign keys
                   for (let e = 0; e < col.edges.length; e++) {
@@ -312,6 +334,9 @@ export function getMermaidDiagramDb(
                           !(targetIsPrimary && sourceIsPrimary)
                         ) {
                           let sourceId = edge.source.value;
+                          if (edge.source.style.trim().startsWith("shape=tableRow")) {
+                            sourceId = edge.source.children[1].value;
+                          }
                           const sourceAttr = getDbLabel(
                             sourceId,
                             columnQuantifiers
@@ -340,7 +365,10 @@ export function getMermaidDiagramDb(
                             sourceEntity = RemoveNameQuantifiers(sourceEntity);
                           }
                           let targetId = edge.target.value;
-                          const targetAttr = getDbLabel(
+                          if (edge.target.style.trim().startsWith("shape=tableRow")) {
+                            targetId = edge.target.children[1].value;
+                          }
+                           const targetAttr = getDbLabel(
                             targetId,
                             columnQuantifiers
                           );
@@ -402,7 +430,10 @@ export function getMermaidDiagramDb(
                         } else if (targetIsPrimary && sourceIsPrimary) {
                           // add a new many to many table
                           let sourceId = edge.source.value;
-                          const sourceAttr = getDbLabel(
+                          if (edge.source.style.trim().startsWith("shape=tableRow")) {
+                            sourceId = edge.source.children[1].value;
+                          }
+                           const sourceAttr = getDbLabel(
                             sourceId,
                             columnQuantifiers
                           );
@@ -412,7 +443,10 @@ export function getMermaidDiagramDb(
                             edge.source.parent.value
                           );
                           let targetId = edge.target.value;
-                          const targetAttr = getDbLabel(
+                          if (edge.target.style.trim().startsWith("shape=tableRow")) {
+                            targetId = edge.target.children[1].value;
+                          }
+                           const targetAttr = getDbLabel(
                             targetId,
                             columnQuantifiers
                           );
@@ -505,6 +539,7 @@ export function getMermaidDiagramDb(
 
   return db;
 }
+
 /**
  * genearte a database model
  * @param entities
@@ -704,10 +739,15 @@ export function CreateTableUI(
                   if (col.mxObjectId.indexOf("mxCell") !== -1) {
                     if (
                       col.style &&
-                      col.style.trim().startsWith("shape=partialRectangle")
+                      (col.style.trim().startsWith("shape=partialRectangle") || 
+                      col.style.trim().startsWith("shape=tableRow"))
                     ) {
+                      let colValue = col.value;
+                      if (col.style.trim().startsWith("shape=tableRow")) {
+                        colValue = col.children[1].value;
+                      }
                       const attribute = getDbLabel(
-                        col.value,
+                        colValue,
                         columnQuantifiers
                       );
                       if (
