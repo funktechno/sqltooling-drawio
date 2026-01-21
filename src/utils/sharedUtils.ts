@@ -87,7 +87,7 @@ export function getDbLabel(
   label: string,
   columnQuantifiers: ColumnQuantifiers
 ): TableAttribute {
-  let result = removeHtml(label);
+  let result = removeHtml(label) + " ";
   // fix duplicate spaces and different space chars
   result = result.toString().replace(/\s+/g, " ");
   const firstSpaceIndex =
@@ -99,11 +99,13 @@ export function getDbLabel(
   const attributeName = RemoveNameQuantifiers(
     result.substring(0, firstSpaceIndex + 1)
   );
-  const attributesTypes = attributeType.split(" ");
+  let attributesTypes = attributeType.split(" ");
   let attributeComment: string | null = null;
   if (attributesTypes.length > 1) {
     attributeComment = attributesTypes.slice(1).join(' ');
     attributeType = attributesTypes[0];
+  } else {
+    attributeType = "NONE";
   }
 
   const attribute = {
@@ -248,26 +250,32 @@ export function getMermaidDiagramDb(
                 } else {
                   attribute = getDbLabel(col.value, columnQuantifiers);
                 }
+                console.log("Column: ", attribute.attributeName);
+
+                // check for Primary Key attribute
                 if (col.children && col.children.length) {
-                  // Check for Primary Key or Foreign Key attribute
-                  const attributeKeyType = col.children.find(
-                    (x) =>
-                      ["FK", "PK"].findIndex(
-                        (k) => k == x.value.toUpperCase()
-                      ) !== -1 || x.value.toUpperCase().indexOf("PK,") != -1
-                  );
-                  if (attributeKeyType) {
-                    attribute.attributeKeyType = attributeKeyType.value;
-                    if (
-                      attribute.attributeKeyType != "PK" &&
-                      attribute.attributeKeyType.indexOf("PK") != -1
-                    ) {
-                      attribute.attributeKeyType = "PK";
+                  try {
+                    // Check for Primary Key or Foreign Key attribute
+                    const attributeKeyType = col.children.find(
+                      (x) =>
+                        ["FK", "PK"].findIndex(
+                          (k) => k == x.value.toUpperCase()
+                        ) !== -1 || x.value.toUpperCase().indexOf("PK,") != -1
+                    );
+                    if (attributeKeyType) {
+                      attribute.attributeKeyType = attributeKeyType.value;
+                      if (
+                        attribute.attributeKeyType != "PK" &&
+                        attribute.attributeKeyType.indexOf("PK") != -1
+                      ) {
+                        attribute.attributeKeyType = "PK";
+                      }
                     }
+                  } catch (e: unknown) {
+                    console.error("PK check caught exception " + e);
                   }
                 }
                 entity.attributes.push(attribute);
-                console.log("Column: ", attribute.attributeName);
 
                 if (col.edges && col.edges.length) {
                   console.log(col.edges.length, "edges");
