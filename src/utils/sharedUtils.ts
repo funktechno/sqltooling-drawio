@@ -101,11 +101,12 @@ export function getDbLabel(
   );
   let attributesTypes = attributeType.split(" ");
   let attributeComment: string | null = null;
+  attributeType = attributesTypes[0];
+  if (attributeType === "") {
+    attributeType = "NONE";
+  }
   if (attributesTypes.length > 1) {
     attributeComment = attributesTypes.slice(1).join(' ');
-    attributeType = attributesTypes[0];
-  } else {
-    attributeType = "NONE";
   }
 
   const attribute = {
@@ -193,7 +194,7 @@ export function getMermaidDiagramDb(
         if (mxcell.style && (mxcell.style.trim().startsWith("swimlane;") 
           || mxcell.style.trim().startsWith("shape=table;"))
         ) {
-          let entityName = mxcell.value.toString();
+          let entityName = removeHtml(mxcell.value.toString());
           let description = "";
           let formatValue = "";
           if (
