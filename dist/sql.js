@@ -1,7 +1,7 @@
 /**
  * File: sql.js
  * Version: 0.0.7
- * Generated: 2025-10-24
+ * Generated: 2026-01-21
  */
 (function(){function r(e,n,t){function o(i,f){if(!n[i]){if(!e[i]){var c="function"==typeof require&&require;if(!f&&c)return c(i,!0);if(u)return u(i,!0);var a=new Error("Cannot find module '"+i+"'");throw a.code="MODULE_NOT_FOUND",a}var p=n[i]={exports:{}};e[i][0].call(p.exports,function(r){var n=e[i][1][r];return o(n||r)},p,p.exports,r,e,n,t)}return n[i].exports}for(var u="function"==typeof require&&require,i=0;i<t.length;i++)o(t[i]);return o}return r})()({1:[function(require,module,exports){
 "use strict";
@@ -1222,7 +1222,7 @@ function RemoveNameQuantifiers(name) {
  * @returns
  */
 function getDbLabel(label, columnQuantifiers) {
-    let result = removeHtml(label);
+    let result = removeHtml(label) + " ";
     // fix duplicate spaces and different space chars
     result = result.toString().replace(/\s+/g, " ");
     const firstSpaceIndex = result[0] == columnQuantifiers.Start &&
@@ -1231,11 +1231,14 @@ function getDbLabel(label, columnQuantifiers) {
         : result.indexOf(" ");
     let attributeType = result.substring(firstSpaceIndex + 1).trim();
     const attributeName = RemoveNameQuantifiers(result.substring(0, firstSpaceIndex + 1));
-    const attributesTypes = attributeType.split(" ");
+    let attributesTypes = attributeType.split(" ");
     let attributeComment = null;
+    attributeType = attributesTypes[0];
+    if (attributeType === "") {
+        attributeType = "NONE";
+    }
     if (attributesTypes.length > 1) {
         attributeComment = attributesTypes.slice(1).join(' ');
-        attributeType = attributesTypes[0];
     }
     const attribute = {
         attributeName,
@@ -1295,12 +1298,17 @@ function getMermaidDiagramDb(ui, type) {
     // TODO: support for ts and openapi enum
     // build models
     // fix fk for comments
+    //
+    // Loop through cells in the model
     for (const key in model.cells) {
         if (Object.hasOwnProperty.call(model.cells, key)) {
             const mxcell = model.cells[key];
             if (mxcell.mxObjectId.indexOf("mxCell") !== -1) {
-                if (mxcell.style && mxcell.style.trim().startsWith("swimlane;")) {
-                    let entityName = mxcell.value.toString();
+                // See if this is a swimlane (list/entity) or a table.
+                // If so, treat it as a table in the DB
+                if (mxcell.style && (mxcell.style.trim().startsWith("swimlane;")
+                    || mxcell.style.trim().startsWith("shape=table;"))) {
+                    let entityName = removeHtml(mxcell.value.toString());
                     let description = "";
                     let formatValue = "";
                     if ((entityName === null || entityName === void 0 ? void 0 : entityName.includes(constants_1.commentColumnQuantifiers.Start)) &&
@@ -1331,36 +1339,59 @@ function getMermaidDiagramDb(ui, type) {
                     if (comment) {
                         entity.name += ` ${comment}`;
                     }
+                    console.log("Table: ", entity.name);
+                    // Iterate over the children of this cell; treat them as possible columns in the DB table
+                    //
+                    // Get row attributes
+                    const columnQuantifiers = GetColumnQuantifiers(type);
                     // const comment =
                     for (let c = 0; c < mxcell.children.length; c++) {
                         const col = mxcell.children[c];
                         if (col.mxObjectId.indexOf("mxCell") !== -1) {
                             if (col.style &&
-                                col.style.trim().startsWith("shape=partialRectangle")) {
-                                const columnQuantifiers = GetColumnQuantifiers(type);
+                                (col.style.trim().startsWith("shape=partialRectangle") ||
+                                    col.style.trim().startsWith("shape=tableRow") ||
+                                    col.style.trim().startsWith("text")) // List entry
+                            ) {
                                 //Get delimiter of column name
                                 //Get full name
-                                const attribute = getDbLabel(col.value, columnQuantifiers);
-                                const attributeKeyType = col.children.find((x) => ["FK", "PK"].findIndex((k) => k == x.value.toUpperCase()) !== -1 || x.value.toUpperCase().indexOf("PK,") != -1);
-                                if (attributeKeyType) {
-                                    attribute.attributeKeyType = attributeKeyType.value;
-                                    if (attribute.attributeKeyType != "PK" &&
-                                        attribute.attributeKeyType.indexOf("PK") != -1) {
-                                        attribute.attributeKeyType = "PK";
+                                let attribute;
+                                if (col.style.trim().startsWith("shape=tableRow")) {
+                                    attribute = getDbLabel(col.children[1].value, columnQuantifiers);
+                                }
+                                else {
+                                    attribute = getDbLabel(col.value, columnQuantifiers);
+                                }
+                                console.log("Column: ", attribute.attributeName);
+                                // check for Primary Key attribute
+                                if (col.children && col.children.length) {
+                                    try {
+                                        // Check for Primary Key or Foreign Key attribute
+                                        const attributeKeyType = col.children.find((x) => ["FK", "PK"].findIndex((k) => k == x.value.toUpperCase()) !== -1 || x.value.toUpperCase().indexOf("PK,") != -1);
+                                        if (attributeKeyType) {
+                                            attribute.attributeKeyType = attributeKeyType.value;
+                                            if (attribute.attributeKeyType != "PK" &&
+                                                attribute.attributeKeyType.indexOf("PK") != -1) {
+                                                attribute.attributeKeyType = "PK";
+                                            }
+                                        }
+                                    }
+                                    catch (e) {
+                                        console.error("PK check caught exception " + e);
                                     }
                                 }
                                 entity.attributes.push(attribute);
                                 if (col.edges && col.edges.length) {
+                                    console.log(col.edges.length, "edges");
                                     // check for edges foreign keys
                                     for (let e = 0; e < col.edges.length; e++) {
                                         const edge = col.edges[e];
+                                        console.log("source=", edge.source, " target=", edge.target);
                                         if (edge.mxObjectId.indexOf("mxCell") !== -1) {
                                             if (edge.style &&
                                                 edge.style.indexOf("endArrow=") != -1 &&
                                                 edge.source &&
-                                                edge.source.value &&
-                                                edge.target &&
-                                                edge.target.value) {
+                                                edge.target) {
                                                 // need to check if end is open or certain value to determin relationship type
                                                 // extract endArrow txt
                                                 // check if both match and contain many or open
@@ -1392,7 +1423,11 @@ function getMermaidDiagramDb(ui, type) {
                                                 // has to be one to many and not one to one
                                                 if ((targetIsPrimary || sourceIsPrimary) &&
                                                     !(targetIsPrimary && sourceIsPrimary)) {
+                                                    console.log("Source: ", edge.source.id, edge.source.value);
                                                     let sourceId = edge.source.value;
+                                                    if (edge.source.style.trim().startsWith("shape=tableRow")) {
+                                                        sourceId = edge.source.children[1].value;
+                                                    }
                                                     const sourceAttr = getDbLabel(sourceId, columnQuantifiers);
                                                     sourceId = sourceAttr.attributeName;
                                                     let sourceEntity = edge.source.parent.value;
@@ -1411,7 +1446,11 @@ function getMermaidDiagramDb(ui, type) {
                                                     else {
                                                         sourceEntity = RemoveNameQuantifiers(sourceEntity);
                                                     }
+                                                    console.log("Target: ", edge.target.id, edge.target.value);
                                                     let targetId = edge.target.value;
+                                                    if (edge.target.style.trim().startsWith("shape=tableRow")) {
+                                                        targetId = edge.target.children[1].value;
+                                                    }
                                                     const targetAttr = getDbLabel(targetId, columnQuantifiers);
                                                     targetId = targetAttr.attributeName;
                                                     let targetEntity = edge.target.parent.value;
@@ -1462,15 +1501,23 @@ function getMermaidDiagramDb(ui, type) {
                                                 else if (targetIsPrimary && sourceIsPrimary) {
                                                     // add a new many to many table
                                                     let sourceId = edge.source.value;
+                                                    if (edge.source.style.trim().startsWith("shape=tableRow")) {
+                                                        sourceId = edge.source.children[1].value;
+                                                    }
                                                     const sourceAttr = getDbLabel(sourceId, columnQuantifiers);
                                                     sourceAttr.attributeKeyType = "PK";
                                                     sourceId = sourceAttr.attributeName;
-                                                    const sourceEntity = RemoveNameQuantifiers(edge.source.parent.value);
+                                                    let sourceParent = edge.source.parent;
+                                                    const sourceEntity = RemoveNameQuantifiers(sourceParent.value);
                                                     let targetId = edge.target.value;
+                                                    if (edge.target.style.trim().startsWith("shape=tableRow")) {
+                                                        targetId = edge.target.children[1].value;
+                                                    }
                                                     const targetAttr = getDbLabel(targetId, columnQuantifiers);
                                                     targetAttr.attributeKeyType = "PK";
                                                     targetId = targetAttr.attributeName;
-                                                    const targetEntity = RemoveNameQuantifiers(edge.target.parent.value);
+                                                    let targetParent = edge.target.parent;
+                                                    const targetEntity = RemoveNameQuantifiers(targetParent.value);
                                                     const compositeEntity = {
                                                         name: RemoveNameQuantifiers(sourceEntity) +
                                                             "_" +
@@ -1681,8 +1728,13 @@ function CreateTableUI(ui, wndFromInput, tableList, cells, rowCell, tableCell, f
                                     const col = mxcell.children[c];
                                     if (col.mxObjectId.indexOf("mxCell") !== -1) {
                                         if (col.style &&
-                                            col.style.trim().startsWith("shape=partialRectangle")) {
-                                            const attribute = getDbLabel(col.value, columnQuantifiers);
+                                            (col.style.trim().startsWith("shape=partialRectangle") ||
+                                                col.style.trim().startsWith("shape=tableRow"))) {
+                                            let colValue = col.value;
+                                            if (col.style.trim().startsWith("shape=tableRow")) {
+                                                colValue = col.children[1].value;
+                                            }
+                                            const attribute = getDbLabel(colValue, columnQuantifiers);
                                             if (isPrimaryTable &&
                                                 RemoveNameQuantifiers(attribute.attributeName) == RemoveNameQuantifiers(fk.PrimaryKeyName)) {
                                                 targetCell = col;
