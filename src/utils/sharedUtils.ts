@@ -87,7 +87,7 @@ export function getDbLabel(
   label: string,
   columnQuantifiers: ColumnQuantifiers
 ): TableAttribute {
-  let result = removeHtml(label);
+  let result = removeHtml(label) + " ";
   // fix duplicate spaces and different space chars
   result = result.toString().replace(/\s+/g, " ");
   const firstSpaceIndex =
@@ -99,11 +99,14 @@ export function getDbLabel(
   const attributeName = RemoveNameQuantifiers(
     result.substring(0, firstSpaceIndex + 1)
   );
-  const attributesTypes = attributeType.split(" ");
+  let attributesTypes = attributeType.split(" ");
   let attributeComment: string | null = null;
+  attributeType = attributesTypes[0];
+  if (attributeType === "") {
+    attributeType = "NONE";
+  }
   if (attributesTypes.length > 1) {
     attributeComment = attributesTypes.slice(1).join(' ');
-    attributeType = attributesTypes[0];
   }
 
   const attribute = {
@@ -154,6 +157,7 @@ export function getCommentIndexes(result: string) {
     end: lastSpaceIndex,
   };
 }
+
 /**
  * generate db from drawio graph models
  * @param ui
@@ -179,12 +183,18 @@ export function getMermaidDiagramDb(
   // TODO: support for ts and openapi enum
   // build models
   // fix fk for comments
+  //
+  // Loop through cells in the model
   for (const key in model.cells) {
     if (Object.hasOwnProperty.call(model.cells, key)) {
       const mxcell = model.cells[key];
       if (mxcell.mxObjectId.indexOf("mxCell") !== -1) {
-        if (mxcell.style && mxcell.style.trim().startsWith("swimlane;")) {
-          let entityName = mxcell.value.toString();
+        // See if this is a swimlane (list/entity) or a table.
+        // If so, treat it as a table in the DB
+        if (mxcell.style && (mxcell.style.trim().startsWith("swimlane;") 
+          || mxcell.style.trim().startsWith("shape=table;"))
+        ) {
+          let entityName = removeHtml(mxcell.value.toString());
           let description = "";
           let formatValue = "";
           if (
@@ -218,46 +228,68 @@ export function getMermaidDiagramDb(
           if (comment) {
             entity.name += ` ${comment}`;
           }
+          console.log("Table: ", entity.name);
+          // Iterate over the children of this cell; treat them as possible columns in the DB table
+          //
+          // Get row attributes
+          const columnQuantifiers = GetColumnQuantifiers(type);
           // const comment =
           for (let c = 0; c < mxcell.children.length; c++) {
             const col = mxcell.children[c];
             if (col.mxObjectId.indexOf("mxCell") !== -1) {
               if (
                 col.style &&
-                col.style.trim().startsWith("shape=partialRectangle")
+                (col.style.trim().startsWith("shape=partialRectangle") || 
+                col.style.trim().startsWith("shape=tableRow") ||
+                col.style.trim().startsWith("text"))    // List entry
               ) {
-                const columnQuantifiers = GetColumnQuantifiers(type);
                 //Get delimiter of column name
                 //Get full name
-                const attribute = getDbLabel(col.value, columnQuantifiers);
-                const attributeKeyType = col.children.find(
-                  (x) =>
-                    ["FK", "PK"].findIndex(
-                      (k) => k == x.value.toUpperCase()
-                    ) !== -1 || x.value.toUpperCase().indexOf("PK,") != -1
-                );
-                if (attributeKeyType) {
-                  attribute.attributeKeyType = attributeKeyType.value;
-                  if (
-                    attribute.attributeKeyType != "PK" &&
-                    attribute.attributeKeyType.indexOf("PK") != -1
-                  ) {
-                    attribute.attributeKeyType = "PK";
+                let attribute;
+                if (col.style.trim().startsWith("shape=tableRow")) {
+                  attribute = getDbLabel(col.children[1].value, columnQuantifiers);
+                } else {
+                  attribute = getDbLabel(col.value, columnQuantifiers);
+                }
+                console.log("Column: ", attribute.attributeName);
+
+                // check for Primary Key attribute
+                if (col.children && col.children.length) {
+                  try {
+                    // Check for Primary Key or Foreign Key attribute
+                    const attributeKeyType = col.children.find(
+                      (x) =>
+                        ["FK", "PK"].findIndex(
+                          (k) => k == x.value.toUpperCase()
+                        ) !== -1 || x.value.toUpperCase().indexOf("PK,") != -1
+                    );
+                    if (attributeKeyType) {
+                      attribute.attributeKeyType = attributeKeyType.value;
+                      if (
+                        attribute.attributeKeyType != "PK" &&
+                        attribute.attributeKeyType.indexOf("PK") != -1
+                      ) {
+                        attribute.attributeKeyType = "PK";
+                      }
+                    }
+                  } catch (e: unknown) {
+                    console.error("PK check caught exception " + e);
                   }
                 }
                 entity.attributes.push(attribute);
+
                 if (col.edges && col.edges.length) {
+                  console.log(col.edges.length, "edges");
                   // check for edges foreign keys
                   for (let e = 0; e < col.edges.length; e++) {
                     const edge = col.edges[e];
+                    console.log("source=", edge.source, " target=", edge.target);
                     if (edge.mxObjectId.indexOf("mxCell") !== -1) {
                       if (
                         edge.style &&
                         edge.style.indexOf("endArrow=") != -1 &&
                         edge.source &&
-                        edge.source.value &&
-                        edge.target &&
-                        edge.target.value
+                        edge.target
                       ) {
                         // need to check if end is open or certain value to determin relationship type
                         // extract endArrow txt
@@ -311,12 +343,17 @@ export function getMermaidDiagramDb(
                           (targetIsPrimary || sourceIsPrimary) &&
                           !(targetIsPrimary && sourceIsPrimary)
                         ) {
+                          console.log("Source: ", edge.source.id, edge.source.value);
                           let sourceId = edge.source.value;
+                          if (edge.source.style.trim().startsWith("shape=tableRow")) {
+                            sourceId = edge.source.children[1].value;
+                          }
                           const sourceAttr = getDbLabel(
                             sourceId,
                             columnQuantifiers
                           );
                           sourceId = sourceAttr.attributeName;
+
                           let sourceEntity = edge.source.parent.value;
                           // extract comments
                           let commentsIndexes = getCommentIndexes(sourceEntity);
@@ -339,8 +376,13 @@ export function getMermaidDiagramDb(
                           } else {
                             sourceEntity = RemoveNameQuantifiers(sourceEntity);
                           }
+
+                          console.log("Target: ", edge.target.id, edge.target.value);
                           let targetId = edge.target.value;
-                          const targetAttr = getDbLabel(
+                          if (edge.target.style.trim().startsWith("shape=tableRow")) {
+                            targetId = edge.target.children[1].value;
+                          }
+                           const targetAttr = getDbLabel(
                             targetId,
                             columnQuantifiers
                           );
@@ -402,24 +444,32 @@ export function getMermaidDiagramDb(
                         } else if (targetIsPrimary && sourceIsPrimary) {
                           // add a new many to many table
                           let sourceId = edge.source.value;
-                          const sourceAttr = getDbLabel(
+                          if (edge.source.style.trim().startsWith("shape=tableRow")) {
+                            sourceId = edge.source.children[1].value;
+                          }
+                           const sourceAttr = getDbLabel(
                             sourceId,
                             columnQuantifiers
                           );
                           sourceAttr.attributeKeyType = "PK";
                           sourceId = sourceAttr.attributeName;
+                          let sourceParent = edge.source.parent;
                           const sourceEntity = RemoveNameQuantifiers(
-                            edge.source.parent.value
+                            sourceParent.value
                           );
                           let targetId = edge.target.value;
-                          const targetAttr = getDbLabel(
+                          if (edge.target.style.trim().startsWith("shape=tableRow")) {
+                            targetId = edge.target.children[1].value;
+                          }
+                           const targetAttr = getDbLabel(
                             targetId,
                             columnQuantifiers
                           );
                           targetAttr.attributeKeyType = "PK";
                           targetId = targetAttr.attributeName;
+                          let targetParent = edge.target.parent;
                           const targetEntity = RemoveNameQuantifiers(
-                            edge.target.parent.value
+                            targetParent.value
                           );
                           const compositeEntity = {
                             name:
@@ -505,6 +555,7 @@ export function getMermaidDiagramDb(
 
   return db;
 }
+
 /**
  * genearte a database model
  * @param entities
@@ -704,10 +755,15 @@ export function CreateTableUI(
                   if (col.mxObjectId.indexOf("mxCell") !== -1) {
                     if (
                       col.style &&
-                      col.style.trim().startsWith("shape=partialRectangle")
+                      (col.style.trim().startsWith("shape=partialRectangle") || 
+                      col.style.trim().startsWith("shape=tableRow"))
                     ) {
+                      let colValue = col.value;
+                      if (col.style.trim().startsWith("shape=tableRow")) {
+                        colValue = col.children[1].value;
+                      }
                       const attribute = getDbLabel(
-                        col.value,
+                        colValue,
                         columnQuantifiers
                       );
                       if (
