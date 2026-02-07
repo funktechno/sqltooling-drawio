@@ -1,17 +1,27 @@
 import globals from "globals";
-import pluginJs from "@eslint/js";
-import tseslint from "typescript-eslint";
+import tsPlugin from "@typescript-eslint/eslint-plugin";
+import tsParser from "@typescript-eslint/parser";
 
 export default [
-  pluginJs.configs.recommended,
-  ...tseslint.configs.recommended,
   {
     files: ["**/*.{js,mjs,cjs,ts}"],
+    languageOptions: {
+      parser: tsParser,
+      parserOptions: {
+        ecmaVersion: 2022,
+        sourceType: "module",
+        project: "./tsconfig.eslint.json",
+      },
+      globals: globals.browser,
+    },
+    plugins: {
+      '@typescript-eslint': tsPlugin,
+    },
+
     rules: {
       semi: ["error", "always"],
       quotes: ["off", "double"],
       "@typescript-eslint/explicit-function-return-type": "off",
-      "@typescript-eslint/camelcase": "off",
       "@typescript-eslint/no-unsafe-function-type": "off",
       "@typescript-eslint/no-explicit-any": "off",
       "no-useless-escape": "off",
@@ -27,9 +37,8 @@ export default [
         },
       ],
       "@typescript-eslint/no-unused-vars": "warn",
-      "@typescript-eslint/class-name-casing": "off",
     },
-    ignores: ["lib/*", "deps/*", "dist/*", "archived"],
+    ignores: ["lib/*", "deps/*", "dist/*", "archived", "node_modules", "./*.js"],
   },
   {
     files: ["**/__tests__/*.{j,t}s?(x)", "**/tests/**/*.spec.{j,t}s?(x)"],
