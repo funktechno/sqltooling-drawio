@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unused-vars */
 import { ColumnQuantifiers } from "@funktechno/sqlsimpleparser/lib/types";
 import {
   GetColumnQuantifiers,
@@ -186,7 +187,7 @@ describe("sharedUtils.ts", () => {
       const mockDrawioUI: DrawioUI = {
         fileNode: null,
         hideDialog: () => {},
-        showDialog: (...args: any[]) => {},
+        showDialog: (..._args: any[]) => {},
         editor: {
           graph: {
             getModel: () => {
@@ -196,18 +197,18 @@ describe("sharedUtils.ts", () => {
           } as any,
         },
         actions: {
-          addAction: (name: string, action: () => void) => {},
-          get: (name: string) => {
+          addAction: (_name: string, _action: () => void) => {},
+          get: (_name: string) => {
             return { funct: () => {} };
           },
         },
         menus: {
-          get: (name: string) => null,
-          funct: (...args: any[]) => {},
+          get: (_name: string) => null,
+          funct: (..._args: any[]) => {},
           enabled: true,
-          addMenuItems: (menu: any, arg: any, arg2: any) => {},
+          addMenuItems: (_menu: any, _arg: any, _arg2: any) => {},
         } as any,
-        importLocalFile: (args: boolean) => {},
+        importLocalFile: (_args: boolean) => {},
       };
       const result = getMermaidDiagramDb(mockDrawioUI, "mysql");
       const expectedResult = GenerateDatabaseModel({}, []);

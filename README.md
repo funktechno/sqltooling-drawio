@@ -1,45 +1,69 @@
 # SQL Tooling for Draw.io
 
-Third-party plugins for SQL tooling in Draw.io. Contributions are welcome!
+Third-party plugins that add SQL and NoSQL tooling to Draw.io. Contributions welcome!
+
+## Table of Contents
+
+- [Overview](#overview)
+- [Download](#download)
+  - [Option 1: Direct Download](#option-1-direct-download)
+  - [Option 2: Clone Repository](#option-2-clone-repository)
+- [Installation](#installation)
+  - [VSCode Integration](#vscode-integration)
+  - [Desktop App Integration](#desktop-app-integration)
+- [Features](#features)
+  - [SQL Plugin (`sql.js`)](#sql-plugin-sqljs)
+  - [NoSQL Plugin (`nosql.js`)](#nosql-plugin-nosqljs)
+  - [TypeScript Plugin (`nosql-ts.js`)](#typescript-plugin-nosql-tsjs)
+- [Examples](#examples)
+- [Development](#development)
+  - [Prerequisites](#prerequisites)
+  - [Setup](#setup)
+  - [Build Commands](#build-commands)
+- [Contributing](#contributing)
+- [License](#license)
+
+---
 
 ## Overview
 
-This project provides plugins that extend Draw.io with SQL and NoSQL capabilities, allowing you to:
-- Import/export SQL DDLs
-- Import/export OpenAPI JSONs
+This project provides Draw.io plugins for working with SQL and NoSQL artifacts:
+
+- Import and export SQL DDLs
+- Import and export OpenAPI (OpenAPI 3) JSON
 - Generate TypeScript interfaces
-- Work with various database schemas
+- Visualize and edit database schemas in Draw.io
 
 ## Download
 
 ### Option 1: Direct Download
 
-Download the plugin files directly from the [releases page](https://github.com/funktechno/sqltooling-drawio/releases) or use the direct links below:
+Get the built plugin files from the releases page or use the raw links:
 
-- **[sql.js](https://raw.githubusercontent.com/funktechno/sqltooling-drawio/main/dist/sql.js)** - Import/export SQL DDLs
-- **[nosql.js](https://raw.githubusercontent.com/funktechno/sqltooling-drawio/main/dist/nosql.js)** - Import/export OpenAPI JSONs
-  - Alternative: [nosql.min.js](https://raw.githubusercontent.com/funktechno/sqltooling-drawio/main/dist/nosql.min.js) (minified version)
-- **[nosql-ts.js](https://raw.githubusercontent.com/funktechno/sqltooling-drawio/main/dist/nosql-ts.js)** - Import/export TypeScript interfaces and OpenAPI JSONs
-  - Alternative: [nosql-ts.min.js](https://raw.githubusercontent.com/funktechno/sqltooling-drawio/main/dist/nosql-ts.min.js) (minified version)
+- [Releases](https://github.com/funktechno/sqltooling-drawio/releases)
+- `dist/sql.js` — SQL import/export: https://raw.githubusercontent.com/funktechno/sqltooling-drawio/main/dist/sql.js
+- `dist/nosql.js` — OpenAPI import/export: https://raw.githubusercontent.com/funktechno/sqltooling-drawio/main/dist/nosql.js
+- `dist/nosql-ts.js` — TypeScript & OpenAPI: https://raw.githubusercontent.com/funktechno/sqltooling-drawio/main/dist/nosql-ts.js
   - ⚠️ **Note**: Not VSCode compatible
+
+> Note: Minified variants (e.g., `nosql.min.js`) are available for production use.
 
 ### Option 2: Clone Repository
 
+Clone the repo and use the files from `dist/`:
+
 ```bash
-git clone --branch main git@github.com:funktechno/sqltooling-drawio.git
+git clone --branch main https://github.com/funktechno/sqltooling-drawio.git
+cd sqltooling-drawio
 ```
 
-Then use the files from the `dist` folder.
 
 ## Installation
 
 ### VSCode Integration
 
-For VSCode users with the [Draw.io Integration](https://marketplace.visualstudio.com/items?itemName=hediet.vscode-drawio) extension:
-
-1. Download the plugin files from the [Download](#download) section above
-2. Add to your `settings.json`:
-
+If you use the Draw.io extension for VSCode (hediet.vscode-drawio), add the plugin files to your settings:
+* windows
 ```json
 {
   "hediet.vscode-drawio.plugins": [
@@ -52,83 +76,84 @@ For VSCode users with the [Draw.io Integration](https://marketplace.visualstudio
   ]
 }
 ```
+* mac
+```json
+{
+  "hediet.vscode-drawio.plugins": [
+    { "file": "path/to/sqltooling-drawio/dist/sql.js" },
+    { "file": "path/to/sqltooling-drawio/dist/nosql.js" }
+  ]
+}
+```
 
 ### Desktop App Integration
 
-It's easiest to setup in the Draw.io Desktop to use the plugin. Follow these steps:
+To run the plugin in the Draw.io Desktop app:
 
-#### Prerequisites
-- Download and install [Node.js](https://nodejs.org/)
-
-#### Setup Steps
-
+-
 1. **Clone or Download Draw.io Desktop**
    - **Option A (Git Clone)**: `git clone --recursive https://github.com/jgraph/drawio-desktop.git` (1 GB clone)
    - **Option B (Download ZIP)**: Download from [dev.zip](https://github.com/jgraph/drawio-desktop/archive/refs/heads/dev.zip) and unzip
    - ⚠️ **Note**: Don't download precompiled from Releases as you can't modify the plugins
-
-2. **Install Dependencies**
-   - Open command line (PowerShell, Command Prompt, Bash, Terminal)
-   - Navigate to the drawio-desktop folder: `cd <path>/drawio-desktop`
-   - Run: `npm install`
-
-3. **Update SQL Plugin**
-   - Update `drawio/src/main/webapp/plugins/sql.js` with changes from [this branch](https://raw.githubusercontent.com/funktechno/sqltooling-drawio/main/dist/sql.js)
-
-4. **Run Application**
-   - Execute: `npm start`
-
-5. **Add Plugin**
-   - In the running application, go to **Extras** → **Plugins** → **Add**
-   - Select `sql` plugin
-   - Close application and reopen
-   - Plugin is now installed and ready to use
+2. Install dependencies: `npm install` in the `drawio-desktop` directory.
+3. Replace `drawio/src/main/webapp/plugins/sql.js` with the built `dist/sql.js` from this repo.
+4. Start the app: `npm start`.
+5. Add the plugin via Extras → Plugins → Add, then restart Draw.io.
 
 ## Features
 
 ### SQL Plugin (`sql.js`)
-- Import SQL DDLs into Draw.io diagrams
-- Export diagrams as SQL DDLs
-- Database schema visualization
+- Import SQL DDL into Draw.io diagrams
+- Export diagrams to SQL DDL
+- Visualize database schema relationships
 
 ### NoSQL Plugin (`nosql.js`)
-- Import/export OpenAPI JSON specifications
-- Generate classes/interfaces in your preferred language using OpenAPI specs
-- API documentation visualization
+- Import and export OpenAPI (OpenAPI 3) JSON
+- Generate language bindings using OpenAPI
+- Visualize API models and relationships
 
 ### TypeScript Plugin (`nosql-ts.js`)
 - Import/export TypeScript interfaces
-- Import/export OpenAPI JSONs
-- Type-safe development workflows
+- Interoperate with OpenAPI generation
 
 ## Examples
 
 ### SQL Import/Export
+
 ![SQL Import Menu](./assets/menu_from_sql.png)
 
 ### Export Options
+
 ![Export Menu](./assets/menu_export_as_to_sql.png)
+
+### Usage
+
+Shapes: More Shapes → Entity Relation
+
+![Entity Relation Shapes](./assets/entity_relation_shapes.png)
 
 ## Development
 
 ### Prerequisites
-- Node.js
+- Node.js 22
 - npm
 
 ### Setup
+
 ```bash
 npm install
 ```
 
 ### Build Commands
-- `npm run build:client:sql` - Update `dist/sql.js`
-- `npm run build:client:nosql` - Update `dist/nosql.js`
-- `npm run build:client:all` - Update all files in `dist/*`
+
+- `npm run build:client:sql` — build `dist/sql.js`
+- `npm run build:client:nosql` — build `dist/nosql.js`
+- `npm run build:client:all` — build all files under `dist/`
 
 ## Contributing
 
-Contributions are welcome! Please feel free to submit issues and pull requests.
+Contributions are welcome. Please open issues or submit PRs following standard contribution guidelines.
 
 ## License
 
-See [LICENSE](LICENSE) file for details.
+See the -[LICENSE](LICENSE) file for license details.
