@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unused-vars */
 // pulled from https://github.com/hediet/vscode-drawio/blob/master/drawio-custom-plugins/src/drawio-types.d.ts
 
 declare const Draw: {

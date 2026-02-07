@@ -99,7 +99,7 @@ export function getDbLabel(
   const attributeName = RemoveNameQuantifiers(
     result.substring(0, firstSpaceIndex + 1)
   );
-  let attributesTypes = attributeType.split(" ");
+  const attributesTypes = attributeType.split(" ");
   let attributeComment: string | null = null;
   attributeType = attributesTypes[0];
   if (attributeType === "") {
@@ -453,7 +453,7 @@ export function getMermaidDiagramDb(
                           );
                           sourceAttr.attributeKeyType = "PK";
                           sourceId = sourceAttr.attributeName;
-                          let sourceParent = edge.source.parent;
+                          const sourceParent = edge.source.parent;
                           const sourceEntity = RemoveNameQuantifiers(
                             sourceParent.value
                           );
@@ -467,7 +467,7 @@ export function getMermaidDiagramDb(
                           );
                           targetAttr.attributeKeyType = "PK";
                           targetId = targetAttr.attributeName;
-                          let targetParent = edge.target.parent;
+                          const targetParent = edge.target.parent;
                           const targetEntity = RemoveNameQuantifiers(
                             targetParent.value
                           );

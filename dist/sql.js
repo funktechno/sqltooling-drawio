@@ -1,7 +1,7 @@
 /**
  * File: sql.js
- * Version: 0.0.7
- * Generated: 2026-01-21
+ * Version: 0.0.8
+ * Generated: 2026-02-07
  */
 (function(){function r(e,n,t){function o(i,f){if(!n[i]){if(!e[i]){var c="function"==typeof require&&require;if(!f&&c)return c(i,!0);if(u)return u(i,!0);var a=new Error("Cannot find module '"+i+"'");throw a.code="MODULE_NOT_FOUND",a}var p=n[i]={exports:{}};e[i][0].call(p.exports,function(r){var n=e[i][1][r];return o(n||r)},p,p.exports,r,e,n,t)}return n[i].exports}for(var u="function"==typeof require&&require,i=0;i<t.length;i++)o(t[i]);return o}return r})()({1:[function(require,module,exports){
 "use strict";
@@ -903,7 +903,7 @@ const sharedUtils_1 = require("./utils/sharedUtils");
 const constants_1 = require("./utils/constants");
 /**
  * SQL Tools Plugin for importing diagrams from SQL DDL and exporting to SQL.
- * Version: 0.0.7
+ * Version: 0.0.8
  */
 Draw.loadPlugin(function (ui) {
     // export sql methods
@@ -1136,7 +1136,7 @@ Draw.loadPlugin(function (ui) {
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.objectKeyword = exports.arrayKeyword = exports.nullableKeyword = exports.enumKeyword = exports.formatKeyword = exports.commentColumnQuantifiers = exports.pluginVersion = void 0;
 // export sql methods
-exports.pluginVersion = "0.0.7";
+exports.pluginVersion = "0.0.8";
 exports.commentColumnQuantifiers = {
     Start: "/**",
     End: "*/",
@@ -1231,7 +1231,7 @@ function getDbLabel(label, columnQuantifiers) {
         : result.indexOf(" ");
     let attributeType = result.substring(firstSpaceIndex + 1).trim();
     const attributeName = RemoveNameQuantifiers(result.substring(0, firstSpaceIndex + 1));
-    let attributesTypes = attributeType.split(" ");
+    const attributesTypes = attributeType.split(" ");
     let attributeComment = null;
     attributeType = attributesTypes[0];
     if (attributeType === "") {
@@ -1507,7 +1507,7 @@ function getMermaidDiagramDb(ui, type) {
                                                     const sourceAttr = getDbLabel(sourceId, columnQuantifiers);
                                                     sourceAttr.attributeKeyType = "PK";
                                                     sourceId = sourceAttr.attributeName;
-                                                    let sourceParent = edge.source.parent;
+                                                    const sourceParent = edge.source.parent;
                                                     const sourceEntity = RemoveNameQuantifiers(sourceParent.value);
                                                     let targetId = edge.target.value;
                                                     if (edge.target.style.trim().startsWith("shape=tableRow")) {
@@ -1516,7 +1516,7 @@ function getMermaidDiagramDb(ui, type) {
                                                     const targetAttr = getDbLabel(targetId, columnQuantifiers);
                                                     targetAttr.attributeKeyType = "PK";
                                                     targetId = targetAttr.attributeName;
-                                                    let targetParent = edge.target.parent;
+                                                    const targetParent = edge.target.parent;
                                                     const targetEntity = RemoveNameQuantifiers(targetParent.value);
                                                     const compositeEntity = {
                                                         name: RemoveNameQuantifiers(sourceEntity) +
